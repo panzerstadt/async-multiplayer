@@ -1,0 +1,32 @@
+{
+  "name": "async-multiplayer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/react": "latest",
+    "@types/node": "latest",
+    "jest": "^29.7.0",
+    "@jest/globals": "^29.7.0",
+    "supertest": "^6.3.3",
+    "@types/supertest": "^2.0.16",
+    "ts-jest": "^29.1.1",
+    "@faker-js/faker": "^8.4.1",
+    "adm-zip": "^0.5.12",
+    "@types/adm-zip": "^0.5.5"
+  }
+}
+
