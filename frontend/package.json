@@ -1,32 +1,27 @@
 {
-  "name": "async-multiplayer",
-  "version": "1.0.0",
+  "name": "frontend",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "next": "15.3.5"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "@types/react": "latest",
-    "@types/node": "latest",
-    "jest": "^29.7.0",
-    "@jest/globals": "^29.7.0",
-    "supertest": "^6.3.3",
-    "@types/supertest": "^2.0.16",
-    "ts-jest": "^29.1.1",
-    "@faker-js/faker": "^8.4.1",
-    "adm-zip": "^0.5.12",
-    "@types/adm-zip": "^0.5.5"
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5",
+    "@eslint/eslintrc": "^3"
   }
 }
-
