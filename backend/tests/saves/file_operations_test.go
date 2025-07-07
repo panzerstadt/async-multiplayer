@@ -1,154 +1,114 @@
 package saves_test
 
 import (
-	"path/filepath"
+	"bytes"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
-	"panzerstadt/async-multiplayer/tests/saves/helpers"
+	"panzerstadt/async-multiplayer/game"
+	"panzerstadt/async-multiplayer/helpers"
 )
 
-func TestCreateDummyZipFile(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
+func setupTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	require.NoError(t, err)
-	defer helpers.CleanupTestSaveDirectory(tempDir)
-
-	filePath := filepath.Join(tempDir, "test.zip")
-	err = helpers.CreateDummySaveFile(filePath, helpers.TypeZip, helpers.SizeMedium)
-	require.NoError(t, err)
-
-	// Verify file exists and has reasonable size
-	size, err := helpers.GetFileSize(filePath)
-	require.NoError(t, err)
-	assert.Greater(t, size, int64(1000)) // Should be at least 1KB
-	assert.Less(t, size, int64(200000))  // Should be less than 200KB (compressed)
-
-	// Verify it's a valid ZIP file
-	err = helpers.ValidateZipFile(filePath)
-	assert.NoError(t, err)
+	db.AutoMigrate(&game.User{}, &game.Game{}, &game.Player{}, &game.Save{})
+	return db
 }
 
-func TestCreateDummySavFile(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
-	require.NoError(t, err)
-	defer helpers.CleanupTestSaveDirectory(tempDir)
-
-	filePath := filepath.Join(tempDir, "test.sav")
-	err = helpers.CreateDummySaveFile(filePath, helpers.TypeSav, helpers.SizeSmall)
-	require.NoError(t, err)
-
-	// Verify file exists and has expected size
-	size, err := helpers.GetFileSize(filePath)
-	require.NoError(t, err)
-	assert.Equal(t, int64(helpers.SizeSmall), size)
+func setupFileOpRouter(db *gorm.DB) *gin.Engine {
+	r := gin.Default()
+	r.POST("/games/:id/saves", game.UploadSaveHandler(db))
+	return r
 }
 
-func TestCreateRandomSaveFile(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
-	require.NoError(t, err)
-	defer helpers.CleanupTestSaveDirectory(tempDir)
+func TestUploadSave(t *testing.T) {
+	db := setupTestDB(t)
+	r := setupFileOpRouter(db)
 
-	for i := 0; i < 5; i++ {
-		filePath, err := helpers.CreateRandomSaveFile(tempDir)
+	t.Run("successful upload - 201", func(t *testing.T) {
+		user := &game.User{Email: "upload-success@example.com"}
+		db.Create(user)
+		newGame := &game.Game{Name: "Upload Success Game", CreatorID: user.ID}
+		db.Create(newGame)
+		db.Create(&game.Player{UserID: user.ID, GameID: newGame.ID})
+		defer os.RemoveAll("saves")
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		zipContent, err := helpers.CreateDummyZip()
 		require.NoError(t, err)
+		part, _ := writer.CreateFormFile("file", "test.zip")
+		part.Write(zipContent.Bytes())
+		writer.Close()
 
-		// Verify file exists
-		size, err := helpers.GetFileSize(filePath)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/games/"+newGame.ID.String()+"/saves", body)
+		req.Header.Set("User-ID", user.ID.String())
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+	})
+
+	t.Run("game not found - 404", func(t *testing.T) {
+		db := setupTestDB(t)
+		r := setupFileOpRouter(db)
+
+		user := &game.User{Email: "upload-game-not-found@example.com"}
+		db.Create(user)
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		zipContent, err := helpers.CreateDummyZip()
 		require.NoError(t, err)
-		assert.Greater(t, size, int64(0))
+		part, _ := writer.CreateFormFile("file", "test.zip")
+		part.Write(zipContent.Bytes())
+		writer.Close()
 
-		// Verify file extension
-		ext := filepath.Ext(filePath)
-		assert.Contains(t, []string{".zip", ".sav"}, ext)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/games/"+uuid.New().String()+"/saves", body)
+		req.Header.Set("User-ID", user.ID.String())
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		r.ServeHTTP(w, req)
 
-		// If it's a ZIP file, validate it
-		if ext == ".zip" {
-			err = helpers.ValidateZipFile(filePath)
-			assert.NoError(t, err)
-		}
-	}
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("user not in game - 403", func(t *testing.T) {
+		db := setupTestDB(t)
+		r := setupFileOpRouter(db)
+
+		user := &game.User{Email: "upload-not-in-game@example.com"}
+		db.Create(user)
+		newGame := &game.Game{Name: "Not In Game", CreatorID: user.ID}
+		db.Create(newGame)
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		zipContent, err := helpers.CreateDummyZip()
+		require.NoError(t, err)
+		part, _ := writer.CreateFormFile("file", "test.zip")
+		part.Write(zipContent.Bytes())
+		writer.Close()
+
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/games/"+newGame.ID.String()+"/saves", body)
+		req.Header.Set("User-ID", user.ID.String())
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
 }
 
-func TestFileSizeVariations(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
-	require.NoError(t, err)
-	defer helpers.CleanupTestSaveDirectory(tempDir)
-
-	sizes := []helpers.FileSize{
-		helpers.SizeSmall,
-		helpers.SizeMedium,
-		helpers.SizeLarge,
-	}
-
-	for _, expectedSize := range sizes {
-		t.Run(string(rune(expectedSize)), func(t *testing.T) {
-			filePath := filepath.Join(tempDir, "test_size.sav")
-			err := helpers.CreateDummySaveFile(filePath, helpers.TypeSav, expectedSize)
-			require.NoError(t, err)
-
-			actualSize, err := helpers.GetFileSize(filePath)
-			require.NoError(t, err)
-			assert.Equal(t, int64(expectedSize), actualSize)
-		})
-	}
-}
-
-func TestZipFileContents(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
-	require.NoError(t, err)
-	defer helpers.CleanupTestSaveDirectory(tempDir)
-
-	filePath := filepath.Join(tempDir, "test_contents.zip")
-	err = helpers.CreateDummySaveFile(filePath, helpers.TypeZip, helpers.SizeLarge)
-	require.NoError(t, err)
-
-	// The ValidateZipFile function internally checks if files can be read
-	err = helpers.ValidateZipFile(filePath)
-	assert.NoError(t, err)
-}
-
-func TestInvalidFileType(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
-	require.NoError(t, err)
-	defer helpers.CleanupTestSaveDirectory(tempDir)
-
-	filePath := filepath.Join(tempDir, "test.invalid")
-	err = helpers.CreateDummySaveFile(filePath, "invalid", helpers.SizeSmall)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported file type")
-}
-
-func TestFileCleanup(t *testing.T) {
-	tempDir, err := helpers.CreateTestSaveDirectory()
-	require.NoError(t, err)
-
-	// Create some files
-	filePath1 := filepath.Join(tempDir, "test1.zip")
-	filePath2 := filepath.Join(tempDir, "test2.sav")
-
-	err = helpers.CreateDummySaveFile(filePath1, helpers.TypeZip, helpers.SizeSmall)
-	require.NoError(t, err)
-
-	err = helpers.CreateDummySaveFile(filePath2, helpers.TypeSav, helpers.SizeSmall)
-	require.NoError(t, err)
-
-	// Verify files exist
-	_, err = helpers.GetFileSize(filePath1)
-	assert.NoError(t, err)
-
-	_, err = helpers.GetFileSize(filePath2)
-	assert.NoError(t, err)
-
-	// Cleanup directory
-	err = helpers.CleanupTestSaveDirectory(tempDir)
-	assert.NoError(t, err)
-
-	// Verify files are gone
-	_, err = helpers.GetFileSize(filePath1)
-	assert.Error(t, err)
-
-	_, err = helpers.GetFileSize(filePath2)
-	assert.Error(t, err)
-}
