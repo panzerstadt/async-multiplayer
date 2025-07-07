@@ -4,6 +4,22 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
 });
 
+api.interceptors.request.use(
+  (config) => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      const parsedUser = JSON.parse(user);
+      if (parsedUser.token) { // Assuming your user object has a token field
+        config.headers.Authorization = `Bearer ${parsedUser.token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export const createGame = async (name: string, players: string[]) => {
   const response = await api.post('/create-game', { name, players });
   return response.data;
@@ -32,7 +48,7 @@ export const uploadSave = async (id: string, file: File) => {
 
 export const getLatestSave = async (id: string) => {
   const response = await api.get(`/games/${id}/saves/latest`, {
-    responseType: "blob",
+    responseType: 'blob',
   });
   return response.data;
 };

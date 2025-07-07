@@ -18,7 +18,12 @@ const joinGameSchema = z.object({
 
 type JoinGameValues = z.infer<typeof joinGameSchema>;
 
-export default function JoinGamePage() {
+import withAuth from "@/components/withAuth";
+
+// ... (rest of your imports and code)
+
+export default withAuth(JoinGamePage);
+
   const mutation = useMutation({
     mutationFn: (data: { name: string }) => joinGame(data.name),
     onSuccess: () => {

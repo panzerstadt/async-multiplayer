@@ -19,7 +19,12 @@ const createGameSchema = z.object({
 
 type CreateGameValues = z.infer<typeof createGameSchema>;
 
-export default function CreateGamePage() {
+import withAuth from "@/components/withAuth";
+
+// ... (rest of your imports and code)
+
+export default withAuth(CreateGamePage);
+
   const mutation = useMutation({
     mutationFn: (data: { name: string; players: string[] }) => createGame(data.name, data.players),
     onSuccess: () => {

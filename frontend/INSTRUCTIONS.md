@@ -2,36 +2,19 @@
 
 This document outlines the plan for developing the frontend of the Async Multiplayer Management System.
 
-## 1. Component Library Setup (ShadCN)
+## Completed Tasks
 
-- **Initialize ShadCN:** Use the ShadCN CLI to set up the component library.
-- **Choose Style and Color:** Select a style (e.g., `Default` or `New York`) and a base color (e.g., `Slate`, `Gray`, `Zinc`, `Neutral`, `Stone`).
+- **Component Library Setup (ShadCN):** Initialized ShadCN with the `New York` style and `Zinc` base color.
+- **UI Pages:** Created basic pages for `Create Game` (`/create-game`), `Join Game` (`/join-game`), and `Dashboard` (`/dashboard`).
+- **Form Handling:** Implemented form handling using `react-hook-form` and `zod` for validation in `Create Game` and `Join Game` pages.
+- **API Integration:** Integrated `axios` for API calls and `TanStack Query` (`react-query`) for state management. The API service now includes an interceptor for authentication tokens.
+- **Notifications:** Set up `sonner` for displaying toast notifications.
+- **Authentication:** Implemented Google OAuth2 login/logout flow with a basic `AuthContext` and `withAuth` Higher-Order Component for route protection.
+- **Dashboard Enhancements:** Integrated `GameCard` component to display game details, including player information, and added basic save file upload/download functionality.
 
-## 2. UI Pages
+## Next Steps
 
-- **Create Game Page (`/create-game`):** A page with a form for creating a new game.
-- **Join Game Page (`/join-game`):** A page with a form for joining an existing game.
-- **Dashboard Page (`/dashboard`):** A page to display and manage ongoing games.
-
-## 3. Form Handling
-
-- **Install Dependencies:** Add `react-hook-form` and `zod` for form handling and validation.
-- **Implement Forms:** Create forms for creating and joining games, with validation rules for user inputs.
-
-## 4. API Integration
-
-- **Service Layer:** Create a dedicated service layer to handle all API calls to the backend.
-- **Environment Variables:** Use environment variables to manage the backend API URL.
-- **API Calls:** Implement API calls for:
-    - Creating a new game.
-    - Joining an existing game.
-    - Fetching game details.
-    - Uploading and downloading save files.
-
-## 5. Notifications
-
-- **Install Dependency:** Add a notification library like `sonner`.
-- **Implement Notifications:** Set up a system to display notifications for events like:
-    - Successful game creation/joining.
-    - Turn reminders.
-    - Errors.
+1.  **Manual Frontend Testing:** Thoroughly test all implemented frontend features to ensure they function correctly and as expected.
+2.  **UI/UX Refinement:** Improve the overall visual design, responsiveness, and user experience of the application.
+3.  **Enhanced Error Handling and Loading States:** Implement more comprehensive error handling mechanisms and user-friendly loading indicators across all pages and components.
+4.  **Real-time Notifications:** Develop a real-time notification system (e.g., using WebSockets) to provide instant updates for events like turn changes.
