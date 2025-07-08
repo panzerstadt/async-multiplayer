@@ -13,14 +13,17 @@ This project is a web-based application designed to simplify the management of a
 ## How to Use
 
 1.  **Create a Game:**
+
     - Navigate to the "Create Game" page.
     - Give your game a name and invite other players by email.
 
 2.  **Join a Game:**
+
     - If you've been invited to a game, you'll receive an email with a link to join.
     - You can also join a game by entering its name on the "Join Game" page.
 
 3.  **Take Your Turn:**
+
     - When it's your turn, you'll receive an email notification.
     - Download the latest save file from the game's dashboard.
     - Play your turn in Civilization VI.
