@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -19,10 +20,22 @@ func main() {
 		log.Printf("Warning: Error loading .env file: %v", err)
 	}
 
+	FRONTEND_URL := os.Getenv("FRONTEND_URL")
+	if FRONTEND_URL == "" {
+		log.Fatalf("FRONTEND_URL env variable is not set. received: %s", FRONTEND_URL)
+	}
+
 	// Initialize Gin router with custom error middleware
 	r := gin.Default()
 	r.Use(game.ErrorHandlingMiddleware())
-	r.Use(cors.Default()) // Add CORS middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{FRONTEND_URL},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Initialize SQLite database using GORM
 	db, err := gorm.Open(sqlite.Open("game.db"), &gorm.Config{})

@@ -51,8 +51,10 @@ func GoogleLoginHandler(c *gin.Context) {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		fmt.Println("AuthMiddleware triggered") // Logging
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			fmt.Println("Authorization header is missing") // Logging
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
 			return
 		}
