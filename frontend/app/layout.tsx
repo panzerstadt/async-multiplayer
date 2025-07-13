@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { Providers } from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
+import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
@@ -31,7 +32,9 @@ export default function RootLayout({
       <body>
         <Providers>
           <AuthProvider>
-            {children}
+            <WebSocketProvider>
+              {children}
+            </WebSocketProvider>
           </AuthProvider>
           <Toaster />
         </Providers>

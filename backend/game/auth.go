@@ -120,7 +120,10 @@ func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
 			ID    string `json:"id"`
 			Email string `json:"email"`
 		}
-		json.Unmarshal(contents, &userInfo)
+		if err := json.Unmarshal(contents, &userInfo); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse user info"})
+			return
+		}
 
 		// Find or create user in DB
 		var user User

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	socketio "github.com/googollee/go-socket.io"
 	"gorm.io/gorm"
 )
 
@@ -369,7 +370,7 @@ func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func UploadSaveHandler(db *gorm.DB) gin.HandlerFunc {
+func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check
 		userID := c.GetHeader("User-ID")
@@ -488,28 +489,34 @@ func UploadSaveHandler(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// 5. Invoke turn-manager: mark current turn complete & assign next player
-        if err := advanceTurn(db, gameID); err != nil {
-            // Log error but don't fail the request
-            fmt.Printf("Warning: failed to advance turn for game %s: %v\n", gameID, err)
-        }
+		if err := advanceTurn(db, gameID); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: failed to advance turn for game %s: %v\n", gameID, err)
+		}
 
-        // Notify other players
-        var players []Player
-        db.Where("game_id = ? AND user_id != ?", gameID, userUUID).Find(&players)
-        for _, p := range players {
-            // In a real app, you'd get the user's email from the User model
-            // For now, we'll use a placeholder
-            _ = (&EmailNotifier{}).Notify(p.UserID.String(), fmt.Sprintf("New save uploaded for game %s!", game.Name))
-        }
+		// Notify other players
+		var players []Player
+		db.Where("game_id = ? AND user_id != ?", gameID, userUUID).Find(&players)
+		for _, p := range players {
+			// In a real app, you'd get the user's email from the User model
+			// For now, we'll use a placeholder
+			_ = (&EmailNotifier{}).Notify(p.UserID.String(), fmt.Sprintf("New save uploaded for game %s!", game.Name))
+		}
 
-        // 6. Respond 201 with save metadata
-        c.JSON(http.StatusCreated, gin.H{
-            "message":     "save uploaded successfully",
-            "save_id":     save.ID,
-            "game_id":     save.GameID,
-            "file_path":   save.FilePath,
-            "uploaded_by": save.UploadedBy,
-            "created_at":  save.CreatedAt,
-        })
-    }
+		// Emit socket.io event to all players in the game room
+		socketServer.BroadcastToRoom("/", gameID.String(), "new_save", gin.H{
+			"game_id": gameID,
+			"message": fmt.Sprintf("New save uploaded for game %s!", game.Name),
+		})
+
+		// 6. Respond 201 with save metadata
+		c.JSON(http.StatusCreated, gin.H{
+			"message":     "save uploaded successfully",
+			"save_id":     save.ID,
+			"game_id":     save.GameID,
+			"file_path":   save.FilePath,
+			"uploaded_by": save.UploadedBy,
+			"created_at":  save.CreatedAt,
+		})
+	}
 }
