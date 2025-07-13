@@ -40,7 +40,7 @@ function CreateGamePage() {
   });
 
   const onSubmit = (data: CreateGameValues) => {
-    const players = data.players.split(",").map((email) => email.trim());
+    const players = data.players ? data.players.split(",").map((email) => email.trim()) : [];
     mutation.mutate({ name: data.name, players });
   };
 
