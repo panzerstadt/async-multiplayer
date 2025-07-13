@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"panzerstadt/async-multiplayer/game"
+	"panzerstadt/async-multiplayer/tests"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"panzerstadt/async-multiplayer/game"
-	"panzerstadt/async-multiplayer/tests"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGoogleOAuth(t *testing.T) {
@@ -20,8 +20,9 @@ func TestGoogleOAuth(t *testing.T) {
 
 	game.InitOAuth()
 
-	db := tests.SetupTestDB(t)
-	r := tests.SetupRouter(db)
+	db, r, err := tests.SetupTestEnvironment()
+	require.NoError(t, err)
+	defer tests.TeardownTestEnvironment(db)
 
 	t.Run("Google Login Redirect", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -35,4 +36,3 @@ func TestGoogleOAuth(t *testing.T) {
 
 	// TODO: Add test for Google Callback Handler (requires mocking external HTTP calls)
 }
-

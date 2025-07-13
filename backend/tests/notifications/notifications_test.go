@@ -5,40 +5,28 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	socketio "github.com/googollee/go-socket.io"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
-
 	"panzerstadt/async-multiplayer/game"
 	"panzerstadt/async-multiplayer/helpers"
 	"panzerstadt/async-multiplayer/tests"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func setupRouter(db *gorm.DB) *gin.Engine {
-	r := gin.Default()
-	server := socketio.NewServer(nil)
-	// Group save-related routes
-	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.POST("", game.UploadSaveHandler(db, server))
-	return r
-}
-
 func TestNotificationOnSaveUpload(t *testing.T) {
-	db := tests.SetupTestDB(t)
-	r := setupRouter(db)
+	db, r, err := tests.SetupTestEnvironment()
+	require.NoError(t, err)
+	defer tests.TeardownTestEnvironment(db)
 
-	user1 := game.User{Email: "player1@example.com"}
-	require.NoError(t, db.Create(&user1).Error)
-	user2 := game.User{Email: "player2@example.com"}
-	require.NoError(t, db.Create(&user2).Error)
+	user1, err := tests.CreateTestUser(db, "player1@example.com")
+	require.NoError(t, err)
+	user2, err := tests.CreateTestUser(db, "player2@example.com")
+	require.NoError(t, err)
 
-	newGame := game.Game{Name: "Notification Game - " + uuid.New().String()}
-	require.NoError(t, db.Create(&newGame).Error)
+	newGame := &game.Game{Name: "Notification Game - " + uuid.New().String(), CreatorID: user1.ID}
+	require.NoError(t, db.Create(newGame).Error)
 
 	require.NoError(t, db.Create(&game.Player{UserID: user1.ID, GameID: newGame.ID, TurnOrder: 0}).Error)
 	require.NoError(t, db.Create(&game.Player{UserID: user2.ID, GameID: newGame.ID, TurnOrder: 1}).Error)
@@ -52,9 +40,12 @@ func TestNotificationOnSaveUpload(t *testing.T) {
 	part.Write(zipContent.Bytes())
 	writer.Close()
 
+	token, err := tests.GetTestUserToken(user1.ID, user1.Email)
+	require.NoError(t, err)
+
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/games/"+newGame.ID.String()+"/saves", body)
-	req.Header.Set("User-ID", user1.ID.String())
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	r.ServeHTTP(w, req)
 
