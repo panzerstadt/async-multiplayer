@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { joinGame } from "@/services/api";
-
 import { toast } from "sonner";
+import withAuth from "@/components/withAuth";
 
 const joinGameSchema = z.object({
   name: z.string().min(1, "Game name is required"),
@@ -18,19 +18,15 @@ const joinGameSchema = z.object({
 
 type JoinGameValues = z.infer<typeof joinGameSchema>;
 
-import withAuth from "@/components/withAuth";
-
-// ... (rest of your imports and code)
-
-export default withAuth(JoinGamePage);
-
+function JoinGamePage() {
   const mutation = useMutation({
     mutationFn: (data: { name: string }) => joinGame(data.name),
     onSuccess: () => {
       toast.success("Joined game successfully!");
     },
-    onError: (error) => {
-      toast.error(`An error occurred: ${error.message}`);
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`An error occurred: ${errorMessage}`);
     },
   });
 
@@ -60,3 +56,5 @@ export default withAuth(JoinGamePage);
     </div>
   );
 }
+
+export default withAuth(JoinGamePage);

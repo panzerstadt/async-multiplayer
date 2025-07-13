@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createGame } from "@/services/api";
-
 import { toast } from "sonner";
+import withAuth from "@/components/withAuth";
 
 const createGameSchema = z.object({
   name: z.string().min(1, "Game name is required"),
@@ -19,23 +19,23 @@ const createGameSchema = z.object({
 
 type CreateGameValues = z.infer<typeof createGameSchema>;
 
-import withAuth from "@/components/withAuth";
-
-// ... (rest of your imports and code)
-
-export default withAuth(CreateGamePage);
-
+function CreateGamePage() {
   const mutation = useMutation({
     mutationFn: (data: { name: string; players: string[] }) => createGame(data.name, data.players),
     onSuccess: () => {
       toast.success("Game created successfully!");
     },
-    onError: (error) => {
-      toast.error(`An error occurred: ${error.message}`);
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`An error occurred: ${errorMessage}`);
     },
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<CreateGameValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreateGameValues>({
     resolver: zodResolver(createGameSchema),
   });
 
@@ -46,7 +46,10 @@ export default withAuth(CreateGamePage);
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md"
+      >
         <h1 className="text-2xl font-bold text-center">Create a New Game</h1>
         <div className="space-y-4">
           <div>
@@ -56,7 +59,11 @@ export default withAuth(CreateGamePage);
           </div>
           <div>
             <Label htmlFor="players">Players</Label>
-            <Input id="players" placeholder="Enter player emails, separated by commas" {...register("players")} />
+            <Input
+              id="players"
+              placeholder="Enter player emails, separated by commas"
+              {...register("players")}
+            />
             {errors.players && <p className="text-red-500">{errors.players.message}</p>}
           </div>
           <Button type="submit" className="w-full" disabled={mutation.isPending}>
@@ -67,3 +74,5 @@ export default withAuth(CreateGamePage);
     </div>
   );
 }
+
+export default withAuth(CreateGamePage);

@@ -256,7 +256,7 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 		// Check if game name already exists
 		var existingGame Game
 		if err := db.Where("name = ?", req.Name).First(&existingGame).Error; err == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name already exists"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "A game with this name already exists."})
 			return
 		}
 

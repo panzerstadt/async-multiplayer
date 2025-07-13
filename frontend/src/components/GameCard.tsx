@@ -30,8 +30,9 @@ export default function GameCard({ game }: GameCardProps) {
       toast.success("Save file uploaded successfully!");
       queryClient.invalidateQueries({ queryKey: ["games"] });
     },
-    onError: (error) => {
-      toast.error(`Error uploading save: ${error.message}`);
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`Error uploading save: ${errorMessage}`);
     },
   });
 
@@ -59,7 +60,8 @@ export default function GameCard({ game }: GameCardProps) {
       link.remove();
       toast.success("Latest save downloaded!");
     } catch (error: any) {
-      toast.error(`Error downloading save: ${error.message}`);
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`Error downloading save: ${errorMessage}`);
     }
   };
 

@@ -8,7 +8,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 function DashboardPage() {
-  const { data: games, isLoading, isError } = useQuery({ queryKey: ["games"], queryFn: getGames });
+  const {
+    data: games,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({ queryKey: ["games"], queryFn: getGames });
 
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Error fetching games</div>;
@@ -37,6 +42,7 @@ function DashboardPage() {
             <GameCard key={game.id} game={game} />
           ))}
         </div>
+        {error ? <span>{error}</span> : null}
       </div>
     </div>
   );
