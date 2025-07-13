@@ -67,7 +67,7 @@ func main() {
 	game.InitOAuth()
 
 	// Define API routes
-	r.POST("/create-game", game.CreateGameHandler(db))
+	r.POST("/create-game", game.AuthMiddleware(), game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
 	r.GET("/auth/google/login", game.GoogleLoginHandler)
 	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db))
