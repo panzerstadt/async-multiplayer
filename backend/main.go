@@ -76,6 +76,7 @@ func main() {
 	authed := r.Group("/api")
 	authed.Use(game.AuthMiddleware())
 	authed.GET("/user/games", game.GetUserGamesHandler(db))
+	authed.DELETE("/games/:id", game.DeleteGameHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
 
 	// Create rate limited upload endpoint

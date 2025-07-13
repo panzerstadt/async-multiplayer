@@ -7,9 +7,10 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { getLatestSave, uploadSave } from "@/services/api";
+import { deleteGame, getLatestSave, uploadSave } from "@/services/api";
 import Link from "next/link";
 import { AxiosError } from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 interface GameCardProps {
   game: {
@@ -25,6 +26,7 @@ interface GameCardProps {
 export default function GameCard({ game, showViewGameButton = true }: GameCardProps) {
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { user } = useAuth();
 
   const uploadMutation = useMutation({
     mutationFn: (data: { gameId: string; file: File }) => uploadSave(data.gameId, data.file),
@@ -35,6 +37,18 @@ export default function GameCard({ game, showViewGameButton = true }: GameCardPr
     onError: (error: AxiosError<{ error: string }>) => {
       const errorMessage = error.response?.data?.error || error.message;
       toast.error(`Error uploading save: ${errorMessage}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteGame,
+    onSuccess: () => {
+      toast.success("Game deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["games"] });
+    },
+    onError: (error: AxiosError<{ error: string }>) => {
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`Error deleting game: ${errorMessage}`);
     },
   });
 
@@ -65,6 +79,14 @@ export default function GameCard({ game, showViewGameButton = true }: GameCardPr
       const axiosError = error as AxiosError<{ error: string }>;
       const errorMessage = axiosError.response?.data?.error || axiosError.message;
       toast.error(`Error downloading save: ${errorMessage}`);
+    }
+  };
+
+  const handleDelete = () => {
+    if (
+      window.confirm("Are you sure you want to delete this game? This action cannot be undone.")
+    ) {
+      deleteMutation.mutate(game.id);
     }
   };
 
@@ -105,11 +127,16 @@ export default function GameCard({ game, showViewGameButton = true }: GameCardPr
           </Button>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex justify-between">
         {showViewGameButton && (
           <Link href={`/games/${game.id}`}>
             <Button>View Game</Button>
           </Link>
+        )}
+        {user?.id === game.creator_id && (
+          <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? "Deleting..." : "Delete Game"}
+          </Button>
         )}
       </CardFooter>
     </Card>

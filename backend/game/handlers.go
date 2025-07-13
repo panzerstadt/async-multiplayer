@@ -631,3 +631,87 @@ func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFu
 		})
 	}
 }
+
+func DeleteGameHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. Auth & Permission Check
+		userUUID, err := getUserIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+			return
+		}
+
+		gameIDStr := c.Param("id")
+		gameID, err := uuid.Parse(gameIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+			return
+		}
+
+		var game Game
+		if err := db.First(&game, "id = ?", gameID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+
+		if game.CreatorID != userUUID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "only the creator can delete this game"})
+			return
+		}
+
+		// 2. Cascading Delete
+		// Start a transaction
+		tx := db.Begin()
+		if tx.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
+			return
+		}
+
+		// Delete players
+		if err := tx.Where("game_id = ?", gameID).Delete(&Player{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete players"})
+			return
+		}
+
+		// Delete saves and their files
+		var saves []Save
+		if err := tx.Where("game_id = ?", gameID).Find(&saves).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to find saves"})
+			return
+		}
+
+		for _, save := range saves {
+			if err := os.Remove(save.FilePath); err != nil {
+				// Log error but continue, as the DB record is more important
+				fmt.Printf("Warning: failed to delete save file %s: %v\n", save.FilePath, err)
+			}
+		}
+
+		if err := tx.Where("game_id = ?", gameID).Delete(&Save{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete save records"})
+			return
+		}
+
+		// Delete the game itself
+		if err := tx.Delete(&game).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete game"})
+			return
+		}
+
+		// Commit the transaction
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "game deleted successfully"})
+	}
+}
