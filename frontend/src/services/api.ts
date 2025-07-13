@@ -54,6 +54,6 @@ export const getLatestSave = async (id: string) => {
 };
 
 export const getGames = async () => {
-  const response = await api.get("/games");
+  const response = await api.get("/api/user/games");
   return response.data;
 };

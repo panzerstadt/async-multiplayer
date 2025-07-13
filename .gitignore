@@ -1,2 +1,4 @@
 node_modules
 backend/tests/notifications/saves/*
+.env
+backend/game.db
