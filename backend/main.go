@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/sqlite"
@@ -21,6 +22,7 @@ func main() {
 	// Initialize Gin router with custom error middleware
 	r := gin.Default()
 	r.Use(game.ErrorHandlingMiddleware())
+	r.Use(cors.Default()) // Add CORS middleware
 
 	// Initialize SQLite database using GORM
 	db, err := gorm.Open(sqlite.Open("game.db"), &gorm.Config{})
