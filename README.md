@@ -10,6 +10,17 @@ This project is a web-based application designed to simplify the management of a
 - **Notifications:** Receive email notifications when it's your turn to play.
 - **Authentication:** Securely log in using your Google account.
 
+## Getting Started
+
+For instructions on how to set up and run the development environments, please see the README files for the frontend and backend:
+
+- [Backend README](./backend/README.md)
+- [Frontend README](./frontend/README.md)
+
+## Deployment
+
+For instructions on how to deploy the application, please see the [DEPLOY.md](./DEPLOY.md) file.
+
 ## How to Use
 
 1.  **Create a Game:**
