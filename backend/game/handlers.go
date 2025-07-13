@@ -522,6 +522,17 @@ func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFu
 			return
 		}
 
+		// Reset file read pointer after MIME sniffing
+		if seeker, ok := file.(io.Seeker); ok {
+			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reset file read pointer"})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process file"})
+			return
+		}
+
 		// Validate file type/size
 		const maxFileSize = 100 * 1024 * 1024 // 100MB limit
 		if header.Size > maxFileSize {
