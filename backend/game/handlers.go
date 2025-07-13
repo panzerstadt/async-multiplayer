@@ -253,22 +253,22 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			return
-        }
-        fmt.Printf("CreateGameHandler: UserID from context: %v\n", userID) // Logging
+		}
+		fmt.Printf("CreateGameHandler: UserID from context: %v\n", userID) // Logging
 
-        creatorIDStr, ok := userID.(string)
-        if !ok {
-            fmt.Printf("CreateGameHandler: UserID in context is not a string: %v\n", userID) // Logging
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
-            return
-        }
+		creatorIDStr, ok := userID.(string)
+		if !ok {
+			fmt.Printf("CreateGameHandler: UserID in context is not a string: %v\n", userID) // Logging
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+			return
+		}
 
-        creatorID, err := uuid.Parse(creatorIDStr)
-        if err != nil {
-            fmt.Printf("CreateGameHandler: Failed to parse userID string to UUID: %v, Error: %v\n", creatorIDStr, err) // Logging
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
-            return
-        }
+		creatorID, err := uuid.Parse(creatorIDStr)
+		if err != nil {
+			fmt.Printf("CreateGameHandler: Failed to parse userID string to UUID: %v, Error: %v\n", creatorIDStr, err) // Logging
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+			return
+		}
 
 		var req CreateGameRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -314,7 +314,7 @@ func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-				gameIDStr := c.Param("id")
+		gameIDStr := c.Param("id")
 		gameID, err := uuid.Parse(gameIDStr)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
@@ -344,7 +344,6 @@ func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 			GameID:    gameID,
 			TurnOrder: maxTurnOrder + 1,
 		}
-
 
 		if err := db.Create(&player).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join game"})
