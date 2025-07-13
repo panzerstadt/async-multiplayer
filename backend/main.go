@@ -80,6 +80,7 @@ func main() {
 
 	// Create rate limited upload endpoint
 	savesGroup := r.Group("/games/:id/saves")
+	savesGroup.Use(game.AuthMiddleware())
 	savesGroup.Use(game.RateLimitMiddleware(10, time.Minute)) // 10 requests per minute
 	savesGroup.POST("", game.UploadSaveHandler(db, server))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
