@@ -41,6 +41,7 @@ func (g *Game) BeforeCreate(tx *gorm.DB) (err error) {
 type Player struct {
 	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
 	UserID    uuid.UUID `json:"user_id"`
+	User      User      `json:"user" gorm:"foreignKey:UserID"`
 	GameID    uuid.UUID `json:"game_id"`
 	TurnOrder int       `json:"turn_order"`
 }

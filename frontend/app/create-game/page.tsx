@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { createGame } from "@/services/api";
 import { toast } from "sonner";
 import withAuth from "@/components/withAuth";
+import { useRouter } from "next/navigation";
 
 const createGameSchema = z.object({
   name: z.string().min(1, "Game name is required"),
@@ -20,10 +21,13 @@ const createGameSchema = z.object({
 type CreateGameValues = z.infer<typeof createGameSchema>;
 
 function CreateGamePage() {
+  const router = useRouter();
+
   const mutation = useMutation({
     mutationFn: (data: { name: string; players: string[] }) => createGame(data.name, data.players),
     onSuccess: () => {
       toast.success("Game created successfully!");
+      router.push("/dashboard");
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.error || error.message;

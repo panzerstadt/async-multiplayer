@@ -16,7 +16,7 @@ interface GameCardProps {
     name: string;
     creator_id: string;
     current_turn_id?: string;
-    players?: { id: string; user_id: string; turn_order: number }[];
+    players?: { id: string; user_id: string; turn_order: number; user: { email: string } }[];
   };
 }
 
@@ -66,24 +66,26 @@ export default function GameCard({ game }: GameCardProps) {
   };
 
   return (
-    <Card className="w-[350px]">
+    <Card className="max-w-[350px]">
       <CardHeader>
         <CardTitle>{game.name}</CardTitle>
         <CardDescription>Game ID: {game.id}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div>
-          <h4 className="text-md font-semibold">Players:</h4>
-          <ul>
-            {game.players?.map((player) => (
-              <li key={player.id}>
-                Player {player.turn_order + 1}: {player.user_id}{" "}
-                {game.current_turn_id === player.id ? "(Current Turn)" : ""}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="mt-4">
+        {game.players && (
+          <div>
+            <h4 className="text-md font-semibold">Players:</h4>
+            <ul>
+              {game.players?.map((player) => (
+                <li key={player.id}>
+                  Player {player.turn_order + 1}: {player.user.email}{" "}
+                  {game.current_turn_id === player.id ? "(Current Turn)" : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="mt-4 flex flex-col gap-2">
           <Label htmlFor="save-file">Upload Save</Label>
           <Input id="save-file" type="file" onChange={handleFileChange} />
           <Button

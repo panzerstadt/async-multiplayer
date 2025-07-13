@@ -321,9 +321,23 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 				continue
 			}
 			var invitedUser User
-			if err := db.Where(User{Email: playerEmail}).FirstOrCreate(&invitedUser, User{Email: playerEmail, AuthProvider: "email"}).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create or find invited user"})
-				return
+			if err := db.Where("email = ?", playerEmail).First(&invitedUser).Error; err != nil {
+				if err == gorm.ErrRecordNotFound {
+					// User not found, create a new one
+					invitedUser = User{
+						Email:        playerEmail,
+						AuthProvider: "email",
+						// ID will be set automatically by BeforeCreate hook
+					}
+					if err := db.Create(&invitedUser).Error; err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create invited user"})
+						return
+					}
+				} else {
+					// Other database error
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find invited user"})
+					return
+				}
 			}
 
 			// Check if player already exists in the game
@@ -424,7 +438,7 @@ func GetGameHandler(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		var game Game
-		if err := db.Preload("Players").First(&game, "id = ?", gameID).Error; err != nil {
+		if err := db.Preload("Players.User").First(&game, "id = ?", gameID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
 			return
 		}
