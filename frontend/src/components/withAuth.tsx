@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
-const withAuth = (WrappedComponent: React.ComponentType) => {
-  const Auth = (props: any) => {
+const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
+  const Auth = (props: P) => {
     const { user } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
       if (!user) {
-        router.replace('/'); // Redirect to login page if not authenticated
+        router.replace("/"); // Redirect to login page if not authenticated
       }
     }, [user, router]);
 

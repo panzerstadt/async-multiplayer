@@ -7,6 +7,14 @@ import withAuth from "@/components/withAuth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
+interface Game {
+  id: string;
+  name: string;
+  creator_id: string;
+  current_turn_id?: string;
+  players?: { id: string; user_id: string; turn_order: number; user: { email: string } }[];
+}
+
 function DashboardPage() {
   const {
     data: games,
@@ -38,11 +46,11 @@ function DashboardPage() {
       <div className="mt-4">
         <h2 className="text-xl font-semibold">Your Games</h2>
         <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2 lg:grid-cols-3">
-          {games?.map((game: any) => (
+          {games?.map((game: Game) => (
             <GameCard key={game.id} game={game} />
           ))}
         </div>
-        {error ? <span>{error}</span> : null}
+        {error ? <span>{(error as Error).message}</span> : null}
       </div>
     </div>
   );

@@ -6,7 +6,11 @@ import GameCard from "@/components/GameCard";
 import withAuth from "@/components/withAuth";
 
 function GamePage({ params }: { params: { id: string } }) {
-  const { data: game, isLoading, isError } = useQuery({
+  const {
+    data: game,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["game", params.id],
     queryFn: () => getGame(params.id),
   });
@@ -17,7 +21,7 @@ function GamePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="container mx-auto p-4">
-      <GameCard game={game} />
+      <GameCard game={game} showViewGameButton={false} />
     </div>
   );
 }

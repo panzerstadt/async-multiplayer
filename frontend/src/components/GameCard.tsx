@@ -9,6 +9,7 @@ import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { getLatestSave, uploadSave } from "@/services/api";
 import Link from "next/link";
+import { AxiosError } from "axios";
 
 interface GameCardProps {
   game: {
@@ -18,9 +19,10 @@ interface GameCardProps {
     current_turn_id?: string;
     players?: { id: string; user_id: string; turn_order: number; user: { email: string } }[];
   };
+  showViewGameButton?: boolean;
 }
 
-export default function GameCard({ game }: GameCardProps) {
+export default function GameCard({ game, showViewGameButton = true }: GameCardProps) {
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -30,7 +32,7 @@ export default function GameCard({ game }: GameCardProps) {
       toast.success("Save file uploaded successfully!");
       queryClient.invalidateQueries({ queryKey: ["games"] });
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       const errorMessage = error.response?.data?.error || error.message;
       toast.error(`Error uploading save: ${errorMessage}`);
     },
@@ -59,8 +61,9 @@ export default function GameCard({ game }: GameCardProps) {
       link.click();
       link.remove();
       toast.success("Latest save downloaded!");
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
+      const errorMessage = axiosError.response?.data?.error || axiosError.message;
       toast.error(`Error downloading save: ${errorMessage}`);
     }
   };
@@ -103,9 +106,11 @@ export default function GameCard({ game }: GameCardProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Link href={`/games/${game.id}`}>
-          <Button>View Game</Button>
-        </Link>
+        {showViewGameButton && (
+          <Link href={`/games/${game.id}`}>
+            <Button>View Game</Button>
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
