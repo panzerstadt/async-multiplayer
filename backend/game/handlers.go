@@ -244,7 +244,8 @@ func advanceTurn(db *gorm.DB, gameID uuid.UUID) error {
 }
 
 type CreateGameRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name    string   `json:"name" binding:"required"`
+	Players []string `json:"players"`
 }
 
 func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
@@ -296,6 +297,62 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Add creator as a player
+		player := Player{
+			UserID:    creatorID,
+			GameID:    game.ID,
+			TurnOrder: 0,
+		}
+		if err := db.Create(&player).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add creator as player"})
+			return
+		}
+
+		// Fetch creator's user info to get their email
+		var creator User
+		if err := db.First(&creator, "id = ?", creatorID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find creator details"})
+			return
+		}
+
+		// Add invited players
+		for _, playerEmail := range req.Players {
+			if playerEmail == creator.Email { // Skip creator if already added
+				continue
+			}
+			var invitedUser User
+			if err := db.Where(User{Email: playerEmail}).FirstOrCreate(&invitedUser, User{Email: playerEmail, AuthProvider: "email"}).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create or find invited user"})
+				return
+			}
+
+			// Check if player already exists in the game
+			var existingPlayer Player
+			if err := db.Where("user_id = ? AND game_id = ?", invitedUser.ID, game.ID).First(&existingPlayer).Error; err == nil {
+				continue // Player already in game
+			} else if err != gorm.ErrRecordNotFound {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check for existing player"})
+				return
+			}
+
+			// Get next turn order
+			var maxTurnOrder int
+			if err := db.Model(&Player{}).Where("game_id = ?", game.ID).Select("COALESCE(MAX(turn_order), -1)").Scan(&maxTurnOrder).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to determine turn order"})
+				return
+			}
+
+			newPlayer := Player{
+				UserID:    invitedUser.ID,
+				GameID:    game.ID,
+				TurnOrder: maxTurnOrder + 1,
+			}
+			if err := db.Create(&newPlayer).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add invited player to game"})
+				return
+			}
+		}
+
 		c.JSON(http.StatusOK, gin.H{"message": "Game created", "game_id": game.ID})
 	}
 }
@@ -337,7 +394,10 @@ func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 
 		// Add user to game
 		var maxTurnOrder int
-		db.Model(&Player{}).Where("game_id = ?", gameID).Select("COALESCE(MAX(turn_order), -1)").Scan(&maxTurnOrder)
+		if err := db.Model(&Player{}).Where("game_id = ?", gameID).Select("COALESCE(MAX(turn_order), -1)").Scan(&maxTurnOrder).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to determine turn order"})
+			return
+		}
 
 		player := Player{
 			UserID:    userUUID,
