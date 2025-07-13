@@ -4,12 +4,28 @@ import { useQuery } from "@tanstack/react-query";
 import { getGames } from "@/services/api";
 import GameCard from "@/components/GameCard";
 import withAuth from "@/components/withAuth";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 function DashboardPage() {
   const { data: games, isLoading, isError } = useQuery({ queryKey: ["games"], queryFn: getGames });
 
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Error fetching games</div>;
+
+  if (!games || games.length === 0) {
+    return (
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="mt-4">
+          <p>You are not a part of any games yet.</p>
+          <Link href="/create-game">
+            <Button className="mt-2">Create a Game</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
