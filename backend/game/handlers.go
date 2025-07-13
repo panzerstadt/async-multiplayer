@@ -16,6 +16,25 @@ import (
 	"gorm.io/gorm"
 )
 
+func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
+	userIDAny, exists := c.Get("userID")
+	if !exists {
+		return uuid.Nil, fmt.Errorf("user not authenticated")
+	}
+
+	userIDStr, ok := userIDAny.(string)
+	if !ok {
+		return uuid.Nil, fmt.Errorf("invalid user ID format in context")
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid user ID string: %w", err)
+	}
+
+	return userID, nil
+}
+
 // Middleware for centralized error handling
 func ErrorHandlingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -76,15 +95,13 @@ func detectMimeType(file io.Reader) (string, error) {
 
 func GetLatestSaveHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-			return
-		}
-
-		userUUID, ok := userID.(uuid.UUID)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+		userUUID, err := getUserIDFromContext(c)
+		if err != nil {
+			if strings.Contains(err.Error(), "not authenticated") {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 
@@ -134,7 +151,7 @@ func GetLatestSaveHandler(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.Writer.Header().Set("Content-Type", "application/octet-stream")
-		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s_latest.sav\"", gameID))
+		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s_latest.zip\"", gameID))
 		c.Writer.Header().Set("Last-Modified", fileInfo.ModTime().UTC().Format(http.TimeFormat))
 		c.Writer.Header().Set("ETag", fmt.Sprintf("%x-%x", fileInfo.ModTime().Unix(), fileInfo.Size()))
 
@@ -250,24 +267,13 @@ type CreateGameRequest struct {
 
 func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-			return
-		}
-		fmt.Printf("CreateGameHandler: UserID from context: %v\n", userID) // Logging
-
-		creatorIDStr, ok := userID.(string)
-		if !ok {
-			fmt.Printf("CreateGameHandler: UserID in context is not a string: %v\n", userID) // Logging
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
-			return
-		}
-
-		creatorID, err := uuid.Parse(creatorIDStr)
+		creatorID, err := getUserIDFromContext(c)
 		if err != nil {
-			fmt.Printf("CreateGameHandler: Failed to parse userID string to UUID: %v, Error: %v\n", creatorIDStr, err) // Logging
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+			if strings.Contains(err.Error(), "not authenticated") {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 
@@ -373,15 +379,13 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 
 func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-			return
-		}
-
-		userUUID, ok := userID.(uuid.UUID)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+		userUUID, err := getUserIDFromContext(c)
+		if err != nil {
+			if strings.Contains(err.Error(), "not authenticated") {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 
@@ -449,9 +453,13 @@ func GetGameHandler(db *gorm.DB) gin.HandlerFunc {
 
 func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		userID, err := getUserIDFromContext(c)
+		if err != nil {
+			if strings.Contains(err.Error(), "not authenticated") {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 
@@ -468,15 +476,13 @@ func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-			return
-		}
-
-		userUUID, ok := userID.(uuid.UUID)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+		userUUID, err := getUserIDFromContext(c)
+		if err != nil {
+			if strings.Contains(err.Error(), "not authenticated") {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 

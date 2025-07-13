@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	socketio "github.com/googollee/go-socket.io"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -20,15 +21,16 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 
 func SetupRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
+	server := socketio.NewServer(nil)
 	r.POST("/create-game", game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
 	r.GET("/auth/google/login", game.GoogleLoginHandler)
 	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db))
-	
+
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.POST("", game.UploadSaveHandler(db))
+	savesGroup.POST("", game.UploadSaveHandler(db, server))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 	return r
 }
