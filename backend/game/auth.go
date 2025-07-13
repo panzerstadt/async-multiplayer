@@ -144,8 +144,9 @@ func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
 
 		// Generate JWT
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"sub": user.ID,
-			"exp": time.Now().Add(time.Hour * 24).Unix(),
+			"sub":   user.ID,
+			"email": user.Email,
+			"exp":   time.Now().Add(time.Hour * 24).Unix(),
 		})
 
 		// Sign and get the complete encoded token as a string using the secret
