@@ -76,9 +76,15 @@ func detectMimeType(file io.Reader) (string, error) {
 
 func GetLatestSaveHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("User-ID")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+
+		userUUID, ok := userID.(uuid.UUID)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
 			return
 		}
 
@@ -98,11 +104,6 @@ func GetLatestSaveHandler(db *gorm.DB) gin.HandlerFunc {
 
 		// Check if user is a member of the game
 		var player Player
-		userUUID, err := uuid.Parse(userID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-			return
-		}
 		if err := db.Where("user_id = ? AND game_id = ?", userUUID, gameID).First(&player).Error; err != nil {
 			c.JSON(http.StatusForbidden, gin.H{"error": "not a member of this game"})
 			return
@@ -248,6 +249,18 @@ type CreateGameRequest struct {
 
 func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+
+		creatorID, ok := userID.(uuid.UUID)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+			return
+		}
+
 		var req CreateGameRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
@@ -264,6 +277,7 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 		// Create new game
 		game := Game{
 			Name:      req.Name,
+			CreatorID: creatorID,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
@@ -279,14 +293,19 @@ func CreateGameHandler(db *gorm.DB) gin.HandlerFunc {
 
 func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check for authentication (placeholder for now)
-		userID := c.GetHeader("User-ID")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			return
 		}
 
-		gameIDStr := c.Param("id")
+		userUUID, ok := userID.(uuid.UUID)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
+			return
+		}
+
+				gameIDStr := c.Param("id")
 		gameID, err := uuid.Parse(gameIDStr)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
@@ -297,13 +316,6 @@ func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 		var game Game
 		if err := db.First(&game, "id = ?", gameID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
-			return
-		}
-
-		// Parse user ID
-		userUUID, err := uuid.Parse(userID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 			return
 		}
 
@@ -323,6 +335,7 @@ func JoinGameHandler(db *gorm.DB) gin.HandlerFunc {
 			GameID:    gameID,
 			TurnOrder: maxTurnOrder + 1,
 		}
+
 
 		if err := db.Create(&player).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join game"})
@@ -373,9 +386,15 @@ func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check
-		userID := c.GetHeader("User-ID")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+
+		userUUID, ok := userID.(uuid.UUID)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID in context"})
 			return
 		}
 
@@ -383,13 +402,6 @@ func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFu
 		gameID, err := uuid.Parse(gameIDStr)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
-			return
-		}
-
-		// Parse user ID
-		userUUID, err := uuid.Parse(userID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 			return
 		}
 
