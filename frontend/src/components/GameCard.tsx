@@ -8,6 +8,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { getLatestSave, uploadSave } from "@/services/api";
+import Link from "next/link";
 
 interface GameCardProps {
   game: {
@@ -24,8 +25,7 @@ export default function GameCard({ game }: GameCardProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const uploadMutation = useMutation({
-    mutationFn: (data: { gameId: string; file: File }) =>
-      uploadSave(data.gameId, data.file),
+    mutationFn: (data: { gameId: string; file: File }) => uploadSave(data.gameId, data.file),
     onSuccess: () => {
       toast.success("Save file uploaded successfully!");
       queryClient.invalidateQueries({ queryKey: ["games"] });
@@ -52,9 +52,9 @@ export default function GameCard({ game }: GameCardProps) {
     try {
       const data = await getLatestSave(game.id);
       const url = window.URL.createObjectURL(new Blob([data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `${game.name}_latest.sav`);
+      link.setAttribute("download", `${game.name}_latest.sav`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -77,7 +77,8 @@ export default function GameCard({ game }: GameCardProps) {
           <ul>
             {game.players?.map((player) => (
               <li key={player.id}>
-                Player {player.turn_order + 1}: {player.user_id} {game.current_turn_id === player.id ? "(Current Turn)" : ""}
+                Player {player.turn_order + 1}: {player.user_id}{" "}
+                {game.current_turn_id === player.id ? "(Current Turn)" : ""}
               </li>
             ))}
           </ul>
@@ -85,16 +86,24 @@ export default function GameCard({ game }: GameCardProps) {
         <div className="mt-4">
           <Label htmlFor="save-file">Upload Save</Label>
           <Input id="save-file" type="file" onChange={handleFileChange} />
-          <Button onClick={handleUpload} disabled={uploadMutation.isPending || !selectedFile} className="mt-2">
+          <Button
+            onClick={handleUpload}
+            disabled={uploadMutation.isPending || !selectedFile}
+            className="mt-2"
+          >
             {uploadMutation.isPending ? "Uploading..." : "Upload Save"}
           </Button>
         </div>
         <div className="mt-4">
-          <Button onClick={handleDownload} className="w-full">Download Latest Save</Button>
+          <Button onClick={handleDownload} className="w-full">
+            Download Latest Save
+          </Button>
         </div>
       </CardContent>
       <CardFooter>
-        {/* Additional game actions can go here */}
+        <Link href={`/games/${game.id}`}>
+          <Button>View Game</Button>
+        </Link>
       </CardFooter>
     </Card>
   );
