@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -11,6 +13,11 @@ import (
 )
 
 func main() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
+	}
+
 	// Initialize Gin router with custom error middleware
 	r := gin.Default()
 	r.Use(game.ErrorHandlingMiddleware())
@@ -32,6 +39,11 @@ func main() {
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
 	r.GET("/auth/google/login", game.GoogleLoginHandler)
 	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db))
+
+	// Authenticated routes
+	authed := r.Group("/api")
+	authed.Use(game.AuthMiddleware())
+	authed.GET("/user/games", game.GetUserGamesHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
 
 	// Create rate limited upload endpoint

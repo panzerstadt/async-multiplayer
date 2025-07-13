@@ -5,12 +5,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -45,6 +47,43 @@ func GoogleLoginHandler(c *gin.Context) {
 	state := GenerateStateOauthCookie(c)
 	url := oAuthConf.AuthCodeURL(state)
 	c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is missing"})
+			return
+		}
+
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+			return
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			return
+		}
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			c.Set("userID", claims["sub"])
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
+		}
+
+		c.Next()
+	}
 }
 
 func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
@@ -89,7 +128,20 @@ func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
 			CreatedAt:    time.Now(),
 		})
 
-		// TODO: Generate session token and redirect to frontend
-		c.JSON(http.StatusOK, gin.H{"message": "authentication successful", "user": user})
+		// Generate JWT
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"sub": user.ID,
+			"exp": time.Now().Add(time.Hour * 24).Unix(),
+		})
+
+		// Sign and get the complete encoded token as a string using the secret
+		tokenString, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+			return
+		}
+
+		// Redirect to frontend with token
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s?token=%s", os.Getenv("FRONTEND_URL"), tokenString))
 	}
 }

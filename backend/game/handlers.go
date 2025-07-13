@@ -351,6 +351,24 @@ func GetGameHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+
+		var games []Game
+		if err := db.Joins("JOIN players ON players.game_id = games.id").Where("players.user_id = ?", userID).Find(&games).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve games"})
+			return
+		}
+
+		c.JSON(http.StatusOK, games)
+	}
+}
+
 func UploadSaveHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check

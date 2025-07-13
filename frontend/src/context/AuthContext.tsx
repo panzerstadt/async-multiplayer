@@ -20,6 +20,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
+    } else {
+      // Check for token in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      if (token) {
+        // Decode token to get user info
+        const decodedToken = JSON.parse(atob(token.split('.')[1]));
+        const userData = { id: decodedToken.sub, email: decodedToken.email, token };
+        login(userData);
+      }
     }
   }, []);
 
