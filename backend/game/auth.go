@@ -19,8 +19,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var ( 
-	oAuthConf *oauth2.Config
+var (
+	oAuthConf         *oauth2.Config
 	oAuthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo"
 )
 
@@ -78,9 +78,9 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-            c.Set("userID", claims["sub"])
-            fmt.Printf("AuthMiddleware: UserID set in context: %v\n", claims["sub"]) // Logging
-        } else {
+			c.Set("userID", claims["sub"])
+			fmt.Printf("AuthMiddleware: UserID set in context: %v\n", claims["sub"]) // Logging
+		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			return
 		}
@@ -116,32 +116,31 @@ func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read user info"})
 			return
-        }
-        fmt.Printf("Raw Google User Info Response: %s\n", contents)
+		}
+		fmt.Printf("Raw Google User Info Response: %s\n", contents)
 
-        var userInfo struct {
-            ID    string `json:"id"`
-            Email string `json:"email"`
-        }
-        if err := json.Unmarshal(contents, &userInfo); err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse user info"})
-            return
-        }
-        fmt.Printf("Parsed User Info - ID: %s, Email: %s\n", userInfo.ID, userInfo.Email)
+		var userInfo struct {
+			ID    string `json:"id"`
+			Email string `json:"email"`
+		}
+		if err := json.Unmarshal(contents, &userInfo); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse user info"})
+			return
+		}
+		fmt.Printf("Parsed User Info - ID: %s, Email: %s\n", userInfo.ID, userInfo.Email)
 
-        // Validate essential user info from provider
-        if userInfo.Email == "" {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "email not provided by OAuth provider"})
-            return
-        }
+		// Validate essential user info from provider
+		if userInfo.Email == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email not provided by OAuth provider"})
+			return
+		}
 
-        // Find or create user in DB
-        var user User
-        db.Where(User{Email: userInfo.Email}).FirstOrCreate(&user, User{
-            Email:        userInfo.Email,
-            AuthProvider: "google",
-            CreatedAt:    time.Now(),
-        })
+		// Find or create user in DB
+		var user User
+		db.Where(User{Email: userInfo.Email}).FirstOrCreate(&user, User{
+			Email:        userInfo.Email,
+			AuthProvider: "google",
+		})
 
 		// Generate JWT
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
