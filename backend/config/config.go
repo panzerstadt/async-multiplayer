@@ -13,6 +13,7 @@ type Config struct {
 	GoogleOauthRedirectUrl  string `mapstructure:"GOOGLE_OAUTH_REDIRECT_URL"`
 	JwtSecret               string `mapstructure:"JWT_SECRET"`
 	FrontendUrl             string `mapstructure:"FRONTEND_URL"`
+	MailgunAPIKey           string `mapstructure:"MAILGUN_API_KEY"`
 }
 
 // LoadConfig reads configuration from file or environment variables.
