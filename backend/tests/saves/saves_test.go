@@ -17,7 +17,7 @@ import (
 )
 
 func TestGetLatestSave(t *testing.T) {
-	db, r, err := tests.SetupTestEnvironment()
+	db, r, cfg, err := tests.SetupTestEnvironment()
 	require.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
 
@@ -40,7 +40,7 @@ func TestGetLatestSave(t *testing.T) {
 
 		db.Create(&game.Save{GameID: newGame.ID, FilePath: filePath, UploadedBy: user.ID})
 
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestGetLatestSave(t *testing.T) {
 		db.Create(newGame)
 		db.Create(&game.Player{UserID: user.ID, GameID: newGame.ID})
 
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestGetLatestSave(t *testing.T) {
 		user, err := tests.CreateTestUser(db, "game-not-found@example.com")
 		require.NoError(t, err)
 
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestGetLatestSave(t *testing.T) {
 		db.Create(newGame)
 
 		// Note: user is not a player in this game
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()

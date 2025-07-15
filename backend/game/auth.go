@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -17,6 +16,8 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
+
+	"panzerstadt/async-multiplayer/config"
 )
 
 var (
@@ -24,11 +25,11 @@ var (
 	oAuthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo"
 )
 
-func InitOAuth() {
+func InitOAuth(cfg config.Config) {
 	oAuthConf = &oauth2.Config{
-		ClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
-		ClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
-		RedirectURL:  os.Getenv("GOOGLE_OAUTH_REDIRECT_URL"),
+		ClientID:     cfg.GoogleOauthClientID,
+		ClientSecret: cfg.GoogleOauthClientSecret,
+		RedirectURL:  cfg.GoogleOauthRedirectUrl,
 		Scopes:       []string{"email", "profile"},
 		Endpoint:     google.Endpoint,
 	}
@@ -49,7 +50,7 @@ func GoogleLoginHandler(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(cfg config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fmt.Println("AuthMiddleware triggered") // Logging
 		authHeader := c.GetHeader("Authorization")
@@ -69,7 +70,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(os.Getenv("JWT_SECRET")), nil
+			return []byte(cfg.JwtSecret), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -79,7 +80,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			c.Set("userID", claims["sub"])
-			fmt.Printf("AuthMiddleware: UserID set in context: %v\n", claims["sub"]) // Logging
+			fmt.Printf("AuthMiddleware: UserID set in context: %v\n", claims["sub"])
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			return
@@ -89,7 +90,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
+func GoogleCallbackHandler(db *gorm.DB, cfg config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		state, err := c.Cookie("oauthstate")
 		if err != nil || c.Query("state") != state {
@@ -150,14 +151,14 @@ func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
 		})
 
 		// Sign and get the complete encoded token as a string using the secret
-		tokenString, err := jwtToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+		tokenString, err := jwtToken.SignedString([]byte(cfg.JwtSecret))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 			return
 		}
 
 		// Redirect to frontend with token
-		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s?token=%s", os.Getenv("FRONTEND_URL"), tokenString))
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s?token=%s", cfg.FrontendUrl, tokenString))
 	}
 }
 

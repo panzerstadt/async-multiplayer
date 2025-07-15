@@ -14,12 +14,12 @@ import (
 
 func TestCreateGame(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		db, r, err := tests.SetupTestEnvironment()
+		db, r, cfg, err := tests.SetupTestEnvironment()
 		require.NoError(t, err)
 		defer tests.TeardownTestEnvironment(db)
 		user, err := tests.CreateTestUser(db, "creategame-success@example.com")
 		require.NoError(t, err)
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -32,13 +32,13 @@ func TestCreateGame(t *testing.T) {
 	})
 
 	t.Run("name already exists", func(t *testing.T) {
-		db, r, err := tests.SetupTestEnvironment()
+		db, r, cfg, err := tests.SetupTestEnvironment()
 		require.NoError(t, err)
 		defer tests.TeardownTestEnvironment(db)
 
 		user, err := tests.CreateTestUser(db, "creategame-exists@example.com")
 		require.NoError(t, err)
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		// Creating initial game with name
@@ -54,13 +54,13 @@ func TestCreateGame(t *testing.T) {
 	})
 
 	t.Run("missing name", func(t *testing.T) {
-		db, r, err := tests.SetupTestEnvironment()
+		db, r, cfg, err := tests.SetupTestEnvironment()
 		require.NoError(t, err)
 		defer tests.TeardownTestEnvironment(db)
 
 		user, err := tests.CreateTestUser(db, "creategame-missing@example.com")
 		require.NoError(t, err)
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()

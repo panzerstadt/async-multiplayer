@@ -17,7 +17,7 @@ import (
 )
 
 func TestUploadSave(t *testing.T) {
-	db, r, err := tests.SetupTestEnvironment()
+	db, r, cfg, err := tests.SetupTestEnvironment()
 	require.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
 
@@ -37,7 +37,7 @@ func TestUploadSave(t *testing.T) {
 		part.Write(zipContent.Bytes())
 		writer.Close()
 
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -61,7 +61,7 @@ func TestUploadSave(t *testing.T) {
 		part.Write(zipContent.Bytes())
 		writer.Close()
 
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -87,7 +87,7 @@ func TestUploadSave(t *testing.T) {
 		part.Write(zipContent.Bytes())
 		writer.Close()
 
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()

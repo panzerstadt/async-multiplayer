@@ -23,6 +23,10 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 }
 
 func TestGetGame(t *testing.T) {
+	_, _, cfg, err := tests.SetupTestEnvironment()
+	require.NoError(t, err)
+	game.InitOAuth(cfg)
+
 	t.Run("success", func(t *testing.T) {
 		db := tests.SetupTestDB(t)
 		r := setupRouter(db)

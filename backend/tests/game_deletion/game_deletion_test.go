@@ -13,7 +13,7 @@ import (
 )
 
 func TestDeleteGame(t *testing.T) {
-	db, router, err := tests.SetupTestEnvironment()
+	db, router, cfg, err := tests.SetupTestEnvironment()
 	assert.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
 
@@ -36,7 +36,7 @@ func TestDeleteGame(t *testing.T) {
 	db.Create(&player)
 
 	// 4. Get a token for the creator
-	token, err := tests.GetTestUserToken(creator.ID, creator.Email)
+	token, err := tests.GetTestUserToken(creator.ID, creator.Email, cfg)
 	assert.NoError(t, err)
 
 	// 5. Perform the delete request
@@ -69,7 +69,7 @@ func TestDeleteGame(t *testing.T) {
 }
 
 func TestDeleteGame_NotCreator(t *testing.T) {
-	db, router, err := tests.SetupTestEnvironment()
+	db, router, cfg, err := tests.SetupTestEnvironment()
 	assert.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
 
@@ -82,7 +82,7 @@ func TestDeleteGame_NotCreator(t *testing.T) {
 	db.Create(&gameToCreate)
 
 	// 2. Get a token for the non-creator user
-	token, err := tests.GetTestUserToken(notCreator.ID, notCreator.Email)
+	token, err := tests.GetTestUserToken(notCreator.ID, notCreator.Email, cfg)
 	assert.NoError(t, err)
 
 	// 3. Perform the delete request

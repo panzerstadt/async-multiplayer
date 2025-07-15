@@ -4,3 +4,4 @@ backend/tests/notifications/saves/*
 backend/game.db
 backend/saves/*
 async-multiplayer
+config.yaml

@@ -1,7 +1,10 @@
 package tests
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"panzerstadt/async-multiplayer/config"
 	"panzerstadt/async-multiplayer/game"
 	"testing"
 	"time"
@@ -24,14 +27,14 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func SetupRouter(db *gorm.DB) *gin.Engine {
+func SetupRouter(db *gorm.DB, cfg config.Config) *gin.Engine {
 	r := gin.Default()
 	server := socketio.NewServer(nil)
 	r.POST("/create-game", game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
 	r.GET("/auth/google/login", game.GoogleLoginHandler)
-	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db))
+	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db, cfg))
 
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
@@ -41,16 +44,44 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 }
 
 // SetupTestEnvironment initializes the database and router for testing.
-func SetupTestEnvironment() (*gorm.DB, *gin.Engine, error) {
+func SetupTestEnvironment() (*gorm.DB, *gin.Engine, config.Config, error) {
+	// Create a temporary directory for config
+	tempDir, err := ioutil.TempDir("", "test_config")
+	if err != nil {
+		return nil, nil, config.Config{}, err
+	}
+	// Defer cleanup of the temporary directory
+	defer os.RemoveAll(tempDir)
+
+	// Copy config.yaml to the temporary directory
+	sourcePath := "../../config.yaml" // Path relative to backend/tests/
+	destPath := filepath.Join(tempDir, "config.yaml")
+
+	input, err := ioutil.ReadFile(sourcePath)
+	if err != nil {
+		return nil, nil, config.Config{}, err
+	}
+
+	err = ioutil.WriteFile(destPath, input, 0644)
+	if err != nil {
+		return nil, nil, config.Config{}, err
+	}
+
+	// Load configuration from the temporary directory
+	cfg, err := config.LoadConfig(tempDir)
+	if err != nil {
+		return nil, nil, config.Config{}, err
+	}
+
 	// Set up the in-memory SQLite database
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, config.Config{}, err
 	}
 
 	// Auto-migrate the schema
 	if err := db.AutoMigrate(&game.User{}, &game.Game{}, &game.Player{}, &game.Save{}); err != nil {
-		return nil, nil, err
+		return nil, nil, config.Config{}, err
 	}
 
 	// Set up the Gin router
@@ -58,25 +89,25 @@ func SetupTestEnvironment() (*gorm.DB, *gin.Engine, error) {
 	server := socketio.NewServer(nil)
 
 	// Public routes
-	r.POST("/create-game", game.AuthMiddleware(), game.CreateGameHandler(db))
-	r.POST("/join-game/:id", game.AuthMiddleware(), game.JoinGameHandler(db))
+	r.POST("/create-game", game.AuthMiddleware(cfg), game.CreateGameHandler(db))
+	r.POST("/join-game/:id", game.AuthMiddleware(cfg), game.JoinGameHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
 	r.GET("/auth/google/login", game.GoogleLoginHandler)
-	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db))
+	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db, cfg))
 
 	// Authenticated routes
 	authed := r.Group("/api")
-	authed.Use(game.AuthMiddleware())
+	authed.Use(game.AuthMiddleware(cfg))
 	authed.GET("/user/games", game.GetUserGamesHandler(db))
 	authed.DELETE("/games/:id", game.DeleteGameHandler(db))
 
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.Use(game.AuthMiddleware())
+	savesGroup.Use(game.AuthMiddleware(cfg))
 	savesGroup.POST("", game.UploadSaveHandler(db, server))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 
-	return db, r, nil
+	return db, r, cfg, nil
 }
 
 // TeardownTestEnvironment closes the database connection.
@@ -98,7 +129,7 @@ func CreateTestUser(db *gorm.DB, email string) (*game.User, error) {
 }
 
 // GetTestUserToken generates a JWT token for a test user.
-func GetTestUserToken(userID uuid.UUID, email string) (string, error) {
+func GetTestUserToken(userID uuid.UUID, email string, cfg config.Config) (string, error) {
 	expirationTime := time.Now().Add(5 * time.Minute)
 	claims := jwt.MapClaims{
 		"sub":   userID.String(),
@@ -107,5 +138,6 @@ func GetTestUserToken(userID uuid.UUID, email string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return token.SignedString([]byte(cfg.JwtSecret))
 }
+

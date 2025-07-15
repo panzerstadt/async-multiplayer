@@ -16,7 +16,7 @@ import (
 )
 
 func TestNotificationOnSaveUpload(t *testing.T) {
-	db, r, err := tests.SetupTestEnvironment()
+	db, r, cfg, err := tests.SetupTestEnvironment()
 	require.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
 
@@ -40,7 +40,7 @@ func TestNotificationOnSaveUpload(t *testing.T) {
 	part.Write(zipContent.Bytes())
 	writer.Close()
 
-	token, err := tests.GetTestUserToken(user1.ID, user1.Email)
+	token, err := tests.GetTestUserToken(user1.ID, user1.Email, cfg)
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()

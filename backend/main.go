@@ -2,28 +2,23 @@ package main
 
 import (
 	"log"
-	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
-	"github.com/joho/godotenv"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	"panzerstadt/async-multiplayer/config"
 	"panzerstadt/async-multiplayer/game"
 )
 
 func main() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
-	}
-
-	FRONTEND_URL := os.Getenv("FRONTEND_URL")
-	if FRONTEND_URL == "" {
-		log.Fatalf("FRONTEND_URL env variable is not set. received: %s", FRONTEND_URL)
+	// Load configuration
+	config, err := config.LoadConfig(".")
+	if err != nil {
+		log.Fatal("cannot load config:", err)
 	}
 
 	// Initialize Gin router with custom error middleware
@@ -31,7 +26,7 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(game.ErrorHandlingMiddleware())
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{FRONTEND_URL},
+		AllowOrigins:     []string{config.FrontendUrl},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -63,24 +58,24 @@ func main() {
 	db.AutoMigrate(&game.User{}, &game.Game{}, &game.Player{}, &game.Save{})
 
 	// Initialize OAuth
-	game.InitOAuth()
+	game.InitOAuth(config)
 
 	// Define API routes
-	r.POST("/create-game", game.AuthMiddleware(), game.CreateGameHandler(db))
+	r.POST("/create-game", game.AuthMiddleware(config), game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
 	r.GET("/auth/google/login", game.GoogleLoginHandler)
-	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db))
+	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db, config))
 
 	// Authenticated routes
 	authed := r.Group("/api")
-	authed.Use(game.AuthMiddleware())
+	authed.Use(game.AuthMiddleware(config))
 	authed.GET("/user/games", game.GetUserGamesHandler(db))
 	authed.DELETE("/games/:id", game.DeleteGameHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
 
 	// Create rate limited upload endpoint
 	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.Use(game.AuthMiddleware())
+	savesGroup.Use(game.AuthMiddleware(config))
 	savesGroup.Use(game.RateLimitMiddleware(10, time.Minute)) // 10 requests per minute
 	savesGroup.POST("", game.UploadSaveHandler(db, server))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))

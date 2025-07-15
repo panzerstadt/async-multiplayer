@@ -13,14 +13,14 @@ import (
 )
 
 func TestJoinGame(t *testing.T) {
-	db, r, err := tests.SetupTestEnvironment()
+	db, r, cfg, err := tests.SetupTestEnvironment()
 	require.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
 
 	t.Run("success", func(t *testing.T) {
 		user, err := tests.CreateTestUser(db, "join-success@example.com")
 		require.NoError(t, err)
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 		require.NoError(t, err)
 
 		// Creating initial game for joining
@@ -37,10 +37,12 @@ func TestJoinGame(t *testing.T) {
 	})
 
 	t.Run("game not found", func(t *testing.T) {
+		db, r, cfg, err := tests.SetupTestEnvironment()
+		require.NoError(t, err)
+		defer tests.TeardownTestEnvironment(db)
 		user, err := tests.CreateTestUser(db, "join-notfound@example.com")
 		require.NoError(t, err)
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
-		require.NoError(t, err)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/join-game/"+uuid.New().String(), nil)
@@ -52,10 +54,12 @@ func TestJoinGame(t *testing.T) {
 	})
 
 	t.Run("already in game", func(t *testing.T) {
+		db, r, cfg, err := tests.SetupTestEnvironment()
+		require.NoError(t, err)
+		defer tests.TeardownTestEnvironment(db)
 		user, err := tests.CreateTestUser(db, "join-already@example.com")
 		require.NoError(t, err)
-		token, err := tests.GetTestUserToken(user.ID, user.Email)
-		require.NoError(t, err)
+		token, err := tests.GetTestUserToken(user.ID, user.Email, cfg)
 
 		// Creating initial game and player
 		newGame := game.Game{Name: "Game to Join - " + uuid.New().String()}
@@ -81,19 +85,23 @@ func TestJoinGame(t *testing.T) {
 	})
 
 	t.Run("turn order assignment", func(t *testing.T) {
+		db, r, cfg, err := tests.SetupTestEnvironment()
+		require.NoError(t, err)
+		defer tests.TeardownTestEnvironment(db)
+
 		user1, err := tests.CreateTestUser(db, "player1@example.com")
 		require.NoError(t, err)
-		token1, err := tests.GetTestUserToken(user1.ID, user1.Email)
+		token1, err := tests.GetTestUserToken(user1.ID, user1.Email, cfg)
 		require.NoError(t, err)
 
 		user2, err := tests.CreateTestUser(db, "player2@example.com")
 		require.NoError(t, err)
-		token2, err := tests.GetTestUserToken(user2.ID, user2.Email)
+		token2, err := tests.GetTestUserToken(user2.ID, user2.Email, cfg)
 		require.NoError(t, err)
 
 		user3, err := tests.CreateTestUser(db, "player3@example.com")
 		require.NoError(t, err)
-		token3, err := tests.GetTestUserToken(user3.ID, user3.Email)
+		token3, err := tests.GetTestUserToken(user3.ID, user3.Email, cfg)
 		require.NoError(t, err)
 
 		newGame := game.Game{Name: "Turn Order Game - " + uuid.New().String()}

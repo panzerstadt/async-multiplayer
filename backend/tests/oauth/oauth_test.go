@@ -18,11 +18,10 @@ func TestGoogleOAuth(t *testing.T) {
 	os.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "test-client-secret")
 	os.Setenv("GOOGLE_OAUTH_REDIRECT_URL", "http://localhost:8080/auth/google/callback")
 
-	game.InitOAuth()
-
-	db, r, err := tests.SetupTestEnvironment()
+	db, r, cfg, err := tests.SetupTestEnvironment()
 	require.NoError(t, err)
 	defer tests.TeardownTestEnvironment(db)
+	game.InitOAuth(cfg)
 
 	t.Run("Google Login Redirect", func(t *testing.T) {
 		w := httptest.NewRecorder()
