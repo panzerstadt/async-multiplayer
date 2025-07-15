@@ -160,3 +160,15 @@ func GoogleCallbackHandler(db *gorm.DB) gin.HandlerFunc {
 		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s?token=%s", os.Getenv("FRONTEND_URL"), tokenString))
 	}
 }
+
+func GetOAuthConf() *oauth2.Config {
+    return oAuthConf
+}
+
+func GetOAuthGoogleUrlAPI() string {
+    return oAuthGoogleUrlAPI
+}
+
+func SetOAuthGoogleUrlAPI(url string) {
+    oAuthGoogleUrlAPI = url
+}
