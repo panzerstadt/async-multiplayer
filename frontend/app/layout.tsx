@@ -21,6 +21,7 @@ import { Providers } from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
 import { WebSocketProvider } from "@/context/WebSocketContext";
 import { Toaster } from "@/components/ui/sonner";
+import WebSocketStatusIndicator from "@/components/WebSocketStatusIndicator";
 
 export default function RootLayout({
   children,
@@ -34,6 +35,7 @@ export default function RootLayout({
           <AuthProvider>
             <WebSocketProvider>
               {children}
+            <WebSocketStatusIndicator />
             </WebSocketProvider>
           </AuthProvider>
           <Toaster />

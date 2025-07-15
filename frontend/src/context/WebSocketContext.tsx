@@ -14,15 +14,20 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
+    console.log('Attempting to connect to WebSocket server...');
     const newSocket = ClientIO(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080');
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      console.log('Connected to WebSocket server');
+      console.log('WebSocket: Connected');
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
+      console.log('WebSocket: Disconnected');
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('WebSocket: Connection Error', error);
     });
 
     newSocket.on('new_save', (data: { game_id: string; message: string }) => {
