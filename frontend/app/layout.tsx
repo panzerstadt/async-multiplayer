@@ -19,9 +19,9 @@ export const metadata: Metadata = {
 
 import { Providers } from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
-import { WebSocketProvider } from "@/context/WebSocketContext";
+import { SSEProvider } from "@/context/SSEContext";
 import { Toaster } from "@/components/ui/sonner";
-import WebSocketStatusIndicator from "@/components/WebSocketStatusIndicator";
+import SSEStatusIndicator from "@/components/SSEStatusIndicator";
 
 export default function RootLayout({
   children,
@@ -33,10 +33,10 @@ export default function RootLayout({
       <body>
         <Providers>
           <AuthProvider>
-            <WebSocketProvider>
+            <SSEProvider>
               {children}
-            <WebSocketStatusIndicator />
-            </WebSocketProvider>
+            <SSEStatusIndicator />
+            </SSEProvider>
           </AuthProvider>
           <Toaster />
         </Providers>
