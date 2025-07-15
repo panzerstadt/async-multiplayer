@@ -2,6 +2,7 @@ package game
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,8 +13,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	socketio "github.com/googollee/go-socket.io"
 	"gorm.io/gorm"
+
+	"panzerstadt/async-multiplayer/sse"
 )
 
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
@@ -473,7 +475,7 @@ func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server, notifier Notifier) gin.HandlerFunc {
+func UploadSaveHandler(db *gorm.DB, sseManager *sse.SSEManager, notifier Notifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check
 		userUUID, err := getUserIDFromContext(c)
@@ -621,11 +623,13 @@ func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server, notifier Noti
 			}
 		}
 
-		// Emit socket.io event to all players in the game room
-		socketServer.BroadcastToRoom("/", gameID.String(), "new_save", gin.H{
-			"game_id": gameID,
+		// Emit SSE event to all players in the game room
+		notificationMessage := map[string]interface{}{
+			"game_id": gameID.String(),
 			"message": fmt.Sprintf("New save uploaded for game %s!", game.Name),
-		})
+		}
+		jsonMessage, _ := json.Marshal(notificationMessage)
+		sseManager.BroadcastMessage("new_save", jsonMessage)
 
 		// 6. Respond 201 with save metadata
 		c.JSON(http.StatusCreated, gin.H{

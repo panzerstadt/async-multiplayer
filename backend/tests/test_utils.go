@@ -3,16 +3,16 @@ package tests
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"panzerstadt/async-multiplayer/config"
 	"panzerstadt/async-multiplayer/game"
+	"panzerstadt/async-multiplayer/sse"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	socketio "github.com/googollee/go-socket.io"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -29,7 +29,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 
 func SetupRouter(db *gorm.DB, cfg config.Config) *gin.Engine {
 	r := gin.Default()
-	server := socketio.NewServer(nil)
+	sseManager := sse.NewSSEManager()
 	r.POST("/create-game", game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
 	r.GET("/games/:id", game.GetGameHandler(db))
@@ -38,7 +38,7 @@ func SetupRouter(db *gorm.DB, cfg config.Config) *gin.Engine {
 
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.POST("", game.UploadSaveHandler(db, server, game.NewMailgunNotifier(cfg)))
+	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, game.NewMailgunNotifier(cfg)))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 	return r
 }
@@ -86,7 +86,7 @@ func SetupTestEnvironment() (*gorm.DB, *gin.Engine, config.Config, error) {
 
 	// Set up the Gin router
 	r := gin.Default()
-	server := socketio.NewServer(nil)
+	sseManager := sse.NewSSEManager()
 
 	// Public routes
 	r.POST("/create-game", game.AuthMiddleware(cfg), game.CreateGameHandler(db))
@@ -104,7 +104,7 @@ func SetupTestEnvironment() (*gorm.DB, *gin.Engine, config.Config, error) {
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
 	savesGroup.Use(game.AuthMiddleware(cfg))
-	savesGroup.POST("", game.UploadSaveHandler(db, server, game.NewMailgunNotifier(cfg)))
+	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, game.NewMailgunNotifier(cfg)))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 
 	return db, r, cfg, nil
@@ -140,4 +140,3 @@ func GetTestUserToken(userID uuid.UUID, email string, cfg config.Config) (string
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(cfg.JwtSecret))
 }
-
