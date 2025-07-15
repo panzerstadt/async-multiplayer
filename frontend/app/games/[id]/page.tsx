@@ -4,15 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { getGame } from "@/services/api";
 import GameCard from "@/components/GameCard";
 import withAuth from "@/components/withAuth";
+import { use } from "react";
 
-function GamePage({ params }: { params: { id: string } }) {
+function GamePage({ params }: { params: Promise<{ id: string }> }) {
+  const prms = use(params);
   const {
     data: game,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["game", params.id],
-    queryFn: () => getGame(params.id),
+    queryKey: ["game", prms.id],
+    queryFn: () => getGame(prms.id),
   });
 
   if (isLoading) return <div>Loading...</div>;
