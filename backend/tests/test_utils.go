@@ -43,6 +43,21 @@ func (m *MockNotifier) Notify(recipientEmail string, subject string, body string
 	return m.Err
 }
 
+// MockSSEManager is a mock implementation of the sse.Broadcaster interface.
+type MockSSEManager struct{}
+
+// BroadcastMessage is a no-op for the mock manager.
+func (m *MockSSEManager) BroadcastMessage(eventType string, data interface{}) {}
+
+// AddClient is a no-op for the mock manager.
+func (m *MockSSEManager) AddClient(client chan string) {}
+
+// RemoveClient is a no-op for the mock manager.
+func (m *MockSSEManager) RemoveClient(client chan string) {}
+
+// Run is a no-op for the mock manager.
+func (m *MockSSEManager) Run() {}
+
 var jwtKey = []byte("test_secret_key")
 
 func SetupTestDB(t *testing.T) *gorm.DB {
@@ -111,7 +126,7 @@ func SetupTestEnvironment() (*gorm.DB, *gin.Engine, config.Config, error) {
 
 	// Set up the Gin router
 	r := gin.Default()
-	sseManager := sse.NewSSEManager()
+	sseManager := &MockSSEManager{}
 
 	// Public routes
 	r.POST("/create-game", game.AuthMiddleware(cfg), game.CreateGameHandler(db))
@@ -201,7 +216,7 @@ func SetupTestEnvironmentWithNotifier(t *testing.T, notifier game.Notifier) (*go
 
 	// Set up the Gin router
 	r := gin.Default()
-	sseManager := sse.NewSSEManager()
+	sseManager := &MockSSEManager{}
 
 	// Public routes
 	r.POST("/create-game", game.AuthMiddleware(cfg), game.CreateGameHandler(db))

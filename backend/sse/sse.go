@@ -1,108 +1,107 @@
 package sse
 
 import (
-	"fmt"
-	"io"
+	"encoding/json"
 	"log"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
-// SSEClient represents a single SSE client connection
-type SSEClient struct {
-	ID   string
-	Send chan []byte
-}
-
-// SSEManager manages SSE client connections and broadcasting
+// SSEManager manages SSE connections and broadcasts messages.
 type SSEManager struct {
-	clients    map[string]*SSEClient
-	broadcast  chan []byte
-	register   chan *SSEClient
-	unregister chan *SSEClient
+	clients   map[chan string]bool
+	clientsMu sync.RWMutex
 }
 
-// NewSSEManager creates a new SSEManager
+// NewSSEManager creates a new SSEManager.
 func NewSSEManager() *SSEManager {
 	return &SSEManager{
-		clients:    make(map[string]*SSEClient),
-		broadcast:  make(chan []byte),
-		register:   make(chan *SSEClient),
-		unregister: make(chan *SSEClient),
+		clients: make(map[chan string]bool),
 	}
 }
 
-// Run starts the SSEManager
-func (manager *SSEManager) Run() {
-	for {
+// AddClient adds a new client to the SSE manager.
+func (sm *SSEManager) AddClient(client chan string) {
+	sm.clientsMu.Lock()
+	defer sm.clientsMu.Unlock()
+	sm.clients[client] = true
+	log.Println("Client added. Total clients:", len(sm.clients))
+}
+
+// RemoveClient removes a client from the SSE manager.
+func (sm *SSEManager) RemoveClient(client chan string) {
+	sm.clientsMu.Lock()
+	defer sm.clientsMu.Unlock()
+	delete(sm.clients, client)
+	close(client)
+	log.Println("Client removed. Total clients:", len(sm.clients))
+}
+
+// BroadcastMessage sends a message to all connected clients.
+func (sm *SSEManager) BroadcastMessage(eventType string, data interface{}) {
+	sm.clientsMu.RLock()
+	defer sm.clientsMu.RUnlock()
+
+	messageBytes, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Error marshalling SSE data: %v", err)
+		return
+	}
+
+	formattedMessage := "event: " + eventType + "\n" + "data: " + string(messageBytes) + "\n\n"
+
+	for client := range sm.clients {
 		select {
-		case client := <-manager.register:
-			manager.clients[client.ID] = client
-			log.Printf("SSE: Client %s registered. Total clients: %d", client.ID, len(manager.clients))
-		case client := <-manager.unregister:
-			if _, ok := manager.clients[client.ID]; ok {
-				delete(manager.clients, client.ID)
-				close(client.Send)
-				log.Printf("SSE: Client %s unregistered. Total clients: %d", client.ID, len(manager.clients))
-			}
-		case message := <-manager.broadcast:
-			for _, client := range manager.clients {
-				select {
-				case client.Send <- message:
-					// Message sent
-				default:
-					// Client channel is blocked, unregister client
-					close(client.Send)
-					delete(manager.clients, client.ID)
-					log.Printf("SSE: Client %s channel blocked, unregistered. Total clients: %d", client.ID, len(manager.clients))
-				}
-			}
+		case client <- formattedMessage:
+		default:
+			log.Println("Could not send to a client, channel is full or closed.")
 		}
 	}
 }
 
-// BroadcastMessage sends a message to all connected SSE clients
-func (manager *SSEManager) BroadcastMessage(event string, data []byte) {
-	// SSE format:
-	// event: <event>
-	// data: <data>
-
-	// For simplicity, we'll just send data for now.
-	// If you need event types or IDs, you'll need to format the message accordingly.
-	formattedMessage := []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event, data))
-	manager.broadcast <- formattedMessage
+// Broadcaster defines the interface for broadcasting SSE messages.
+type Broadcaster interface {
+	BroadcastMessage(eventType string, data interface{})
+	AddClient(client chan string)
+	RemoveClient(client chan string)
+	Run()
 }
 
-// ServeSSE handles new SSE connections
-func ServeSSE(manager *SSEManager, c *gin.Context) {
+// Run starts the SSE manager.
+func (sm *SSEManager) Run() {
+	// This can be used for periodic cleanup or other maintenance tasks.
+	// For now, it does nothing.
+}
+
+// ServeSSE handles SSE connections.
+func ServeSSE(sm Broadcaster, c *gin.Context) {
+	clientChan := make(chan string)
+	sm.AddClient(clientChan)
+	defer sm.RemoveClient(clientChan)
+
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("Access-Control-Allow-Origin", c.Request.Header.Get("Origin")) // Reflect origin for CORS
-	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 
-	client := &SSEClient{
-		ID:   c.ClientIP(), // Simple ID, consider a more robust unique ID
-		Send: make(chan []byte),
-	}
-	manager.register <- client
+	// Initial connection message
+	c.Writer.Flush()
 
-	defer func() {
-		manager.unregister <- client
-	}()
-
-	c.Stream(func(w io.Writer) bool {
+	for {
 		select {
-		case msg := <-client.Send:
-			_, err := w.Write(msg)
-			if err != nil {
-				log.Printf("SSE: Error writing to client %s: %v", client.ID, err)
-				return false // Close connection
+		case msg, ok := <-clientChan:
+			if !ok {
+				return // Channel closed
 			}
-			return true // Keep connection open
+			_, err := c.Writer.WriteString(msg)
+			if err != nil {
+				log.Printf("Error writing to SSE client: %v", err)
+				return
+			}
+			c.Writer.Flush()
 		case <-c.Request.Context().Done():
-			log.Printf("SSE: Client %s disconnected (context done)", client.ID)
-			return false // Close connection
+			return
 		}
-	})
+	}
 }
