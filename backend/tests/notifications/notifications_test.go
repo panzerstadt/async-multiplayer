@@ -16,8 +16,8 @@ import (
 )
 
 func TestNotificationOnSaveUpload(t *testing.T) {
-	db, r, cfg, err := tests.SetupTestEnvironment()
-	require.NoError(t, err)
+	mockNotifier := tests.NewMockNotifier()
+	db, r, cfg := tests.SetupTestEnvironmentWithNotifier(t, mockNotifier)
 	defer tests.TeardownTestEnvironment(db)
 
 	user1, err := tests.CreateTestUser(db, "player1@example.com")
@@ -50,5 +50,6 @@ func TestNotificationOnSaveUpload(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
-	// In a real test, you would assert that a notification was sent (e.g., by mocking the notifier)
+	assert.Equal(t, "player2@example.com", mockNotifier.LastRecipientEmail)
+	assert.Contains(t, mockNotifier.LastSubject, "It's your turn in "+newGame.Name)
 }

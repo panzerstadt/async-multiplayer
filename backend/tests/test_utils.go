@@ -18,6 +18,31 @@ import (
 	"gorm.io/gorm"
 )
 
+// MockNotifier is a mock implementation of the Notifier interface for testing.
+type MockNotifier struct {
+	// LastRecipientEmail holds the email of the last recipient.
+	LastRecipientEmail string
+	// LastSubject holds the subject of the last notification.
+	LastSubject string
+	// LastBody holds the body of the last notification.
+	LastBody string
+	// Err is the error to return from Notify.
+	Err error
+}
+
+// NewMockNotifier creates a new MockNotifier.
+func NewMockNotifier() *MockNotifier {
+	return &MockNotifier{}
+}
+
+// Notify captures the notification details and returns a predefined error, if any.
+func (m *MockNotifier) Notify(recipientEmail string, subject string, body string) error {
+	m.LastRecipientEmail = recipientEmail
+	m.LastSubject = subject
+	m.LastBody = body
+	return m.Err
+}
+
 var jwtKey = []byte("test_secret_key")
 
 func SetupTestDB(t *testing.T) *gorm.DB {
@@ -27,7 +52,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func SetupRouter(db *gorm.DB, cfg config.Config) *gin.Engine {
+func SetupRouter(db *gorm.DB, cfg config.Config, notifier game.Notifier) *gin.Engine {
 	r := gin.Default()
 	sseManager := sse.NewSSEManager()
 	r.POST("/create-game", game.CreateGameHandler(db))
@@ -38,7 +63,7 @@ func SetupRouter(db *gorm.DB, cfg config.Config) *gin.Engine {
 
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, game.NewMailgunNotifier(cfg)))
+	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, notifier))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 	return r
 }
@@ -104,7 +129,10 @@ func SetupTestEnvironment() (*gorm.DB, *gin.Engine, config.Config, error) {
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
 	savesGroup.Use(game.AuthMiddleware(cfg))
-	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, game.NewMailgunNotifier(cfg)))
+	// In a real test setup, you would pass a mock notifier here.
+	// For now, we'll use the actual notifier but this setup allows for mocking.
+	notifier := game.NewMailgunNotifier(cfg)
+	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, notifier))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 
 	return db, r, cfg, nil
@@ -139,4 +167,60 @@ func GetTestUserToken(userID uuid.UUID, email string, cfg config.Config) (string
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(cfg.JwtSecret))
+}
+
+// SetupTestEnvironmentWithNotifier initializes the database and router for testing with a custom notifier.
+func SetupTestEnvironmentWithNotifier(t *testing.T, notifier game.Notifier) (*gorm.DB, *gin.Engine, config.Config) {
+	// Create a temporary directory for config
+	tempDir, err := ioutil.TempDir("", "test_config")
+	require.NoError(t, err)
+	// Defer cleanup of the temporary directory
+	defer os.RemoveAll(tempDir)
+
+	// Copy config.yaml to the temporary directory
+	sourcePath := "../../config.yaml" // Path relative to backend/tests/
+	destPath := filepath.Join(tempDir, "config.yaml")
+
+	input, err := ioutil.ReadFile(sourcePath)
+	require.NoError(t, err)
+
+	err = ioutil.WriteFile(destPath, input, 0644)
+	require.NoError(t, err)
+
+	// Load configuration from the temporary directory
+	cfg, err := config.LoadConfig(tempDir)
+	require.NoError(t, err)
+
+	// Set up the in-memory SQLite database
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+
+	// Auto-migrate the schema
+	err = db.AutoMigrate(&game.User{}, &game.Game{}, &game.Player{}, &game.Save{})
+	require.NoError(t, err)
+
+	// Set up the Gin router
+	r := gin.Default()
+	sseManager := sse.NewSSEManager()
+
+	// Public routes
+	r.POST("/create-game", game.AuthMiddleware(cfg), game.CreateGameHandler(db))
+	r.POST("/join-game/:id", game.AuthMiddleware(cfg), game.JoinGameHandler(db))
+	r.GET("/games/:id", game.GetGameHandler(db))
+	r.GET("/auth/google/login", game.GoogleLoginHandler)
+	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db, cfg))
+
+	// Authenticated routes
+	authed := r.Group("/api")
+	authed.Use(game.AuthMiddleware(cfg))
+	authed.GET("/user/games", game.GetUserGamesHandler(db))
+	authed.DELETE("/games/:id", game.DeleteGameHandler(db))
+
+	// Group save-related routes
+	savesGroup := r.Group("/games/:id/saves")
+	savesGroup.Use(game.AuthMiddleware(cfg))
+	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, notifier))
+	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
+
+	return db, r, cfg
 }
