@@ -36,7 +36,7 @@ The backend has been significantly refactored for better organization, testabili
 - [ ] **Deployment**:
   - Build the backend application and run it on the specified Homelab environment.
   - Configure external access via Tailscale Funnel.
-- [ ] **Configuration Management**:
+- [x] **Configuration Management**:
   - Implement a more robust configuration management system to handle different environments (development, staging, production) instead of relying solely on `os.Getenv` calls within the code.
 
 ## Frontend Status
