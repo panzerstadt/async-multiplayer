@@ -13,11 +13,13 @@ interface AuthContextType {
   user: User | null;
   login: (userData: User) => void;
   logout: () => void;
+  isReady: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isReady, setIsReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (userData: User) => {
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
+      setIsReady(true);
       router.push("/dashboard");
     },
     [router]
@@ -54,9 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     }
+    setIsReady(true);
   }, [login]);
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, login, logout, isReady }}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

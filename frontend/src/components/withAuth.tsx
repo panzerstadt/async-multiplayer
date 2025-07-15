@@ -6,14 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 
 const withAuth = <P extends object>(WrappedComponent: React.ComponentType<P>) => {
   const Auth = (props: P) => {
-    const { user } = useAuth();
+    const { user, isReady } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-      if (!user) {
+      if (isReady && !user) {
         router.replace("/"); // Redirect to login page if not authenticated
       }
-    }, [user, router]);
+    }, [user, isReady, router]);
 
     if (!user) {
       return null; // Or a loading spinner
