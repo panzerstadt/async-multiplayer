@@ -61,6 +61,9 @@ func main() {
 
 	// SSE endpoint
 	r.GET("/sse/notifications", func(c *gin.Context) {
+		// TODO: serve SSE per game room
+		// 1. get user, get gameID (from params)
+		// 2. serve only to the same game
 		sse.ServeSSE(sseManager, c)
 	})
 
@@ -78,6 +81,11 @@ func main() {
 	savesGroup.POST("", game.UploadSaveHandler(db, sseManager, mailgunNotifier))
 
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
+
+	msgGroup := r.Group("games/:id/broadcast")
+	msgGroup.Use(game.AuthMiddleware(cfg))
+	msgGroup.Use(game.RateLimitMiddleware(100, time.Minute)) // 10 requests per minute
+	msgGroup.POST("", game.MessageHandler(db, sseManager))
 
 	// Start the server
 	r.Run() // listens and serves on 0.0.0.0:8080 by default

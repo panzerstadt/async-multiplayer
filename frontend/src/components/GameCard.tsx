@@ -7,7 +7,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { deleteGame, getLatestSave, uploadSave } from "@/services/api";
+import { broadcastToPlayers, deleteGame, getLatestSave, uploadSave } from "@/services/api";
 import Link from "next/link";
 import { AxiosError } from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -40,6 +40,18 @@ export default function GameCard({ game, showViewGameButton = true }: GameCardPr
     },
   });
 
+  const broadcastMutation = useMutation({
+    mutationFn: (data: { gameId: string; message: string }) =>
+      broadcastToPlayers(data.gameId, data.message),
+    onSuccess: () => {
+      console.log("Message sent successfully!");
+    },
+    onError: (error: AxiosError<{ error: string }>) => {
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`Error sending message: ${errorMessage}`);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: deleteGame,
     onSuccess: () => {
@@ -62,6 +74,9 @@ export default function GameCard({ game, showViewGameButton = true }: GameCardPr
     if (selectedFile) {
       uploadMutation.mutate({ gameId: game.id, file: selectedFile });
     }
+  };
+  const handleBroadcast = () => {
+    broadcastMutation.mutate({ gameId: game.id, message: "yo" });
   };
 
   const handleDownload = async () => {
@@ -121,9 +136,12 @@ export default function GameCard({ game, showViewGameButton = true }: GameCardPr
             {uploadMutation.isPending ? "Uploading..." : "Upload Save"}
           </Button>
         </div>
-        <div className="mt-4">
+        <div className="mt-2 gap-2 flex flex-col">
           <Button onClick={handleDownload} className="w-full">
             Download Latest Save
+          </Button>
+          <Button onClick={handleBroadcast} className="w-full">
+            Ping
           </Button>
         </div>
       </CardContent>

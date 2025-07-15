@@ -23,11 +23,7 @@ import { SSEProvider } from "@/context/SSEContext";
 import { Toaster } from "@/components/ui/sonner";
 import SSEStatusIndicator from "@/components/SSEStatusIndicator";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
@@ -35,10 +31,10 @@ export default function RootLayout({
           <AuthProvider>
             <SSEProvider>
               {children}
-            <SSEStatusIndicator />
+              <SSEStatusIndicator />
             </SSEProvider>
           </AuthProvider>
-          <Toaster />
+          <Toaster position="bottom-center" />
         </Providers>
       </body>
     </html>

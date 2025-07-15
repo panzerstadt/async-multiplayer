@@ -21,20 +21,21 @@ export function SSEProvider({ children }: { children: ReactNode }) {
       console.log("SSE: Connected");
     };
 
-    newEventSource.onmessage = (event) => {
-      console.log("SSE: Message received", event.data);
-      try {
-        const data = JSON.parse(event.data);
-        if (data.event === "new_save") {
-          toast.info(`New save for game ${data.game_id}: ${data.message}`, {
-            duration: Number.POSITIVE_INFINITY,
-            dismissible: true,
-          });
-        }
-      } catch (e) {
-        console.error("SSE: Error parsing message", e);
-      }
-    };
+    newEventSource.addEventListener("new_save", ({ data }) => {
+      const parsed = JSON.parse(data);
+      toast.info(`New save for game ${parsed.game_id}: ${parsed.message}`, {
+        duration: Number.POSITIVE_INFINITY,
+        dismissible: true,
+        cancel: { label: "ok!", onClick: () => {} },
+      });
+    });
+
+    newEventSource.addEventListener("broadcast", ({ data }) => {
+      const parsed = JSON.parse(data);
+      toast(() => (
+        <pre className="text-blue-500 whitespace-pre-wrap">{parsed.replace("\\n", "\n")}</pre>
+      ));
+    });
 
     newEventSource.onerror = (error) => {
       console.error("SSE: Connection Error", error);

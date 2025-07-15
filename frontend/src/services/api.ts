@@ -47,6 +47,11 @@ export const uploadSave = async (id: string, file: File) => {
   return response.data;
 };
 
+export const broadcastToPlayers = async (id: string, message: string) => {
+  const response = await api.post(`games/${id}/broadcast`, { message });
+  return response.data;
+};
+
 export const getLatestSave = async (id: string) => {
   const response = await api.get(`/games/${id}/saves/latest`, {
     responseType: "blob",

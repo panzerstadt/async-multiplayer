@@ -2,7 +2,6 @@ package game
 
 import (
 	"crypto/subtle"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -628,8 +627,7 @@ func UploadSaveHandler(db *gorm.DB, sseManager sse.Broadcaster, notifier Notifie
 			"game_id": gameID.String(),
 			"message": fmt.Sprintf("New save uploaded for game %s!", game.Name),
 		}
-		jsonMessage, _ := json.Marshal(notificationMessage)
-		sseManager.BroadcastMessage("new_save", jsonMessage)
+		sseManager.BroadcastMessage("new_save", notificationMessage)
 
 		// 6. Respond 201 with save metadata
 		c.JSON(http.StatusCreated, gin.H{
@@ -639,6 +637,56 @@ func UploadSaveHandler(db *gorm.DB, sseManager sse.Broadcaster, notifier Notifie
 			"file_path":   save.FilePath,
 			"uploaded_by": save.UploadedBy,
 			"created_at":  save.CreatedAt,
+		})
+	}
+}
+
+type MessageRequest struct {
+	Message string `json:"message" binding:"required"`
+}
+
+func MessageHandler(db *gorm.DB, sseManager sse.Broadcaster) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. Auth & Permission Check
+		userUUID, err := getUserIDFromContext(c)
+		if err != nil {
+			fmt.Println("auth error", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+			return
+		}
+
+		gameIDStr := c.Param("id")
+		gameID, err := uuid.Parse(gameIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+			return
+		}
+
+		var game Game
+		if err := db.First(&game, "id = ?", gameID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": "game not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+
+		var existingPlayer Player
+		if err := db.Preload("User").Where("user_id = ? AND game_id = ?", userUUID, gameID).First(&existingPlayer).Error; err != nil {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("can't get existing player %s from game %s", userUUID, gameID)})
+			return
+		}
+
+		var req MessageRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "message is required"})
+			return
+		}
+
+		sseManager.BroadcastMessage("broadcast", existingPlayer.User.Email+": "+req.Message)
+		c.JSON(http.StatusAccepted, gin.H{
+			"message": "message sent",
 		})
 	}
 }
