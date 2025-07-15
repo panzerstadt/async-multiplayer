@@ -15,15 +15,17 @@ type Notifier interface {
 }
 
 type MailgunNotifier struct {
-	mg     *mailgun.MailgunImpl
-	domain string
+	mg       *mailgun.MailgunImpl
+	domain   string
+	frontend string
 }
 
 func NewMailgunNotifier(cfg config.Config) *MailgunNotifier {
 	mg := mailgun.NewMailgun(cfg.MailgunDomain, cfg.MailgunAPIKey)
 	return &MailgunNotifier{
-		mg:     mg,
-		domain: cfg.MailgunDomain,
+		mg:       mg,
+		domain:   cfg.MailgunDomain,
+		frontend: cfg.FrontendUrl,
 	}
 }
 
@@ -33,7 +35,9 @@ func (m *MailgunNotifier) Notify(recipientEmail string, subject string, body str
 
 	sender := "Async Multiplayer <noreply@async-multiplayer.com>"
 
-	message := m.mg.NewMessage(sender, subject, body, recipientEmail)
+	body = body + fmt.Sprintf("\n\nvisit: %s to download latest save", m.frontend)
+
+	message := mailgun.NewMessage(sender, subject, body, recipientEmail)
 
 	_, _, err := m.mg.Send(ctx, message)
 	if err != nil {
