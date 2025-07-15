@@ -50,5 +50,5 @@ The frontend has been partially implemented. The following tasks have been compl
 
 ### Remaining Tasks
 
-- [ ] **Real-time Notifications**: Implement a client-side solution (e.g., WebSockets) to handle real-time turn notifications from the backend.
+- [x] **Real-time Notifications**: Implemented client-side Server-Sent Events (SSE) to handle real-time turn notifications from the backend.
 - [ ] **Deployment**: Deploy the completed frontend application to Vercel.
