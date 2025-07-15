@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"bytes"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -51,5 +52,5 @@ func TestNotificationOnSaveUpload(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, "player2@example.com", mockNotifier.LastRecipientEmail)
-	assert.Contains(t, mockNotifier.LastSubject, "It's your turn in "+newGame.Name)
+	assert.Contains(t, mockNotifier.LastSubject, fmt.Sprintf("New save uploaded for game %s!", newGame.Name))
 }
