@@ -3,3 +3,4 @@ backend/tests/notifications/saves/*
 .env
 backend/game.db
 backend/saves/*
+async-multiplayer
