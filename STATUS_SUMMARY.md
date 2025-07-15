@@ -23,25 +23,32 @@ The backend has been significantly refactored for better organization, testabili
   - A `/auth/google/callback` route to handle the callback from Google.
 - [x] **Mock Notification System**: A `Notifier` interface has been defined, and a mock `EmailNotifier` has been implemented. This system is integrated into the `UploadSaveHandler` to log a notification when a new save is uploaded.
 
+### Completed Tasks
+
+- [x] **Full Authentication & Authorization**:
+  - Implemented JWT-based session management to persist user sessions.
+  - Created and applied an authentication middleware to secure all protected API endpoints.
+
 ### Remaining Tasks
 
-- [ ] **Full Authentication & Authorization**:
-  - Implement session management (e.g., JWTs or secure cookies) to persist user sessions after a successful OAuth callback.
-  - Create and apply an authentication middleware to secure all protected API endpoints, replacing the current placeholder `User-ID` header.
 - [ ] **Production-Ready Notifications**:
   - Replace the current mock `EmailNotifier` with a real email service integration (e.g., SendGrid, Amazon SES) as outlined in the project instructions.
 - [ ] **Deployment**:
-  - Containerize the backend application using Docker.
-  - Deploy the container to the specified Homelab environment and configure external access via Tailscale Funnel.
+  - Build the backend application and run it on the specified Homelab environment.
+  - Configure external access via Tailscale Funnel.
 - [ ] **Configuration Management**:
   - Implement a more robust configuration management system to handle different environments (development, staging, production) instead of relying solely on `os.Getenv` calls within the code.
 
 ## Frontend Status
 
-The frontend has not yet been started. The following tasks remain, based on the project instructions:
+The frontend has been partially implemented. The following tasks have been completed:
 
-- [ ] **Initial UI Setup**: Scaffold the Next.js application.
-- [ ] **Component Implementation**: Build out the necessary UI components using ShadCN for pages such as game creation, joining, and the main dashboard.
-- [ ] **API Integration**: Connect the frontend to the newly created backend API endpoints.
+- [x] **Initial UI Setup**: The Next.js application has been scaffolded with a well-organized directory structure.
+- [x] **Component Implementation**: Key UI components for game management have been built using ShadCN.
+- [x] **API Integration**: The frontend is connected to the backend API endpoints for core game functionality.
+- [x] **Authentication**: A full authentication system with JWT handling and local storage persistence has been implemented.
+
+### Remaining Tasks
+
 - [ ] **Real-time Notifications**: Implement a client-side solution (e.g., WebSockets) to handle real-time turn notifications from the backend.
 - [ ] **Deployment**: Deploy the completed frontend application to Vercel.
