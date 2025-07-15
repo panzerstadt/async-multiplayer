@@ -475,7 +475,7 @@ func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func UploadSaveHandler(db *gorm.DB, sseManager *sse.SSEManager, notifier Notifier) gin.HandlerFunc {
+func UploadSaveHandler(db *gorm.DB, sseManager sse.Broadcaster, notifier Notifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check
 		userUUID, err := getUserIDFromContext(c)
