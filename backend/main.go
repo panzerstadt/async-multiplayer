@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -28,7 +27,8 @@ func main() {
 	}
 
 	// Initialize Gin router with custom error middleware
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 	r.Use(game.ErrorHandlingMiddleware())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{FRONTEND_URL},
@@ -44,7 +44,6 @@ func main() {
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		s.SetContext("")
-		fmt.Println("connected:", s.ID())
 		return nil
 	})
 
