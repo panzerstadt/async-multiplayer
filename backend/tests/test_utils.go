@@ -38,7 +38,7 @@ func SetupRouter(db *gorm.DB, cfg config.Config) *gin.Engine {
 
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
-	savesGroup.POST("", game.UploadSaveHandler(db, server))
+	savesGroup.POST("", game.UploadSaveHandler(db, server, game.NewMailgunNotifier(cfg)))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 	return r
 }
@@ -104,7 +104,7 @@ func SetupTestEnvironment() (*gorm.DB, *gin.Engine, config.Config, error) {
 	// Group save-related routes
 	savesGroup := r.Group("/games/:id/saves")
 	savesGroup.Use(game.AuthMiddleware(cfg))
-	savesGroup.POST("", game.UploadSaveHandler(db, server))
+	savesGroup.POST("", game.UploadSaveHandler(db, server, game.NewMailgunNotifier(cfg)))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 
 	return db, r, cfg, nil

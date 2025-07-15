@@ -473,7 +473,7 @@ func GetUserGamesHandler(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFunc {
+func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server, notifier Notifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. Auth & membership check
 		userUUID, err := getUserIDFromContext(c)
@@ -607,11 +607,18 @@ func UploadSaveHandler(db *gorm.DB, socketServer *socketio.Server) gin.HandlerFu
 
 		// Notify other players
 		var players []Player
-		db.Where("game_id = ? AND user_id != ?", gameID, userUUID).Find(&players)
-		for _, p := range players {
-			// In a real app, you'd get the user's email from the User model
-			// For now, we'll use a placeholder
-			_ = (&EmailNotifier{}).Notify(p.UserID.String(), fmt.Sprintf("New save uploaded for game %s!", game.Name))
+		if err := db.Preload("User").Where("game_id = ? AND user_id != ?", gameID, userUUID).Find(&players).Error; err != nil {
+			fmt.Printf("Warning: failed to get players for notification: %v\n", err)
+		} else {
+			for _, p := range players {
+				if p.User.Email != "" {
+					subject := fmt.Sprintf("New save uploaded for game %s!", game.Name)
+					body := fmt.Sprintf("A new save has been uploaded for %s. It's now your turn!", game.Name)
+					if err := notifier.Notify(p.User.Email, subject, body); err != nil {
+						fmt.Printf("Warning: failed to send email to %s: %v\n", p.User.Email, err)
+					}
+				}
+			}
 		}
 
 		// Emit socket.io event to all players in the game room

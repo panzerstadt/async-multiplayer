@@ -14,6 +14,7 @@ type Config struct {
 	JwtSecret               string `mapstructure:"JWT_SECRET"`
 	FrontendUrl             string `mapstructure:"FRONTEND_URL"`
 	MailgunAPIKey           string `mapstructure:"MAILGUN_API_KEY"`
+	MailgunDomain           string `mapstructure:"MAILGUN_DOMAIN"`
 }
 
 // LoadConfig reads configuration from file or environment variables.

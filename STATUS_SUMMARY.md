@@ -31,7 +31,7 @@ The backend has been significantly refactored for better organization, testabili
 
 ### Remaining Tasks
 
-- [ ] **Production-Ready Notifications**:
+- [x] **Production-Ready Notifications**:
   - Replace the current mock `EmailNotifier` with a real email service integration (e.g., SendGrid, Amazon SES) as outlined in the project instructions.
 - [ ] **Deployment**:
   - Build the backend application and run it on the specified Homelab environment.

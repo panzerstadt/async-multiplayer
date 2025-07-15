@@ -60,6 +60,9 @@ func main() {
 	// Initialize OAuth
 	game.InitOAuth(config)
 
+	// Initialize Mailgun Notifier
+	mailgunNotifier := game.NewMailgunNotifier(config)
+
 	// Define API routes
 	r.POST("/create-game", game.AuthMiddleware(config), game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
@@ -77,7 +80,7 @@ func main() {
 	savesGroup := r.Group("/games/:id/saves")
 	savesGroup.Use(game.AuthMiddleware(config))
 	savesGroup.Use(game.RateLimitMiddleware(10, time.Minute)) // 10 requests per minute
-	savesGroup.POST("", game.UploadSaveHandler(db, server))
+	savesGroup.POST("", game.UploadSaveHandler(db, server, mailgunNotifier))
 	savesGroup.GET("/latest", game.GetLatestSaveHandler(db))
 
 	// Start the server
