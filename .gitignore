@@ -6,3 +6,4 @@ backend/saves/*
 backend/tests/saves/saves/
 async-multiplayer
 config.yaml
+*.log
