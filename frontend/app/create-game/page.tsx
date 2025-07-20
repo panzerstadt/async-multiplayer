@@ -1,5 +1,6 @@
 "use client";
 
+import { AxiosError } from "axios";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +30,7 @@ function CreateGamePage() {
       toast.success("Game created successfully!");
       router.push("/dashboard");
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       const errorMessage = error.response?.data?.error || error.message;
       toast.error(`An error occurred: ${errorMessage}`);
     },

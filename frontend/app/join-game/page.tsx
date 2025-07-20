@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { joinGame } from "@/services/api";
 import { toast } from "sonner";
 import withAuth from "@/components/withAuth";
+import { AxiosError } from "axios";
 
 const joinGameSchema = z.object({
   name: z.string().min(1, "Game name is required"),
@@ -24,13 +25,17 @@ function JoinGamePage() {
     onSuccess: () => {
       toast.success("Joined game successfully!");
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ error: string }>) => {
       const errorMessage = error.response?.data?.error || error.message;
       toast.error(`An error occurred: ${errorMessage}`);
     },
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<JoinGameValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<JoinGameValues>({
     resolver: zodResolver(joinGameSchema),
   });
 
@@ -40,7 +45,10 @@ function JoinGamePage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md"
+      >
         <h1 className="text-2xl font-bold text-center">Join a Game</h1>
         <div className="space-y-4">
           <div>

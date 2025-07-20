@@ -26,7 +26,7 @@ import SSEStatusIndicator from "@/components/SSEStatusIndicator";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Providers>
           <AuthProvider>
             <SSEProvider>
