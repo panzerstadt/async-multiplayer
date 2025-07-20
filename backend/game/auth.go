@@ -35,19 +35,23 @@ func InitOAuth(cfg config.Config) {
 	}
 }
 
-func GenerateStateOauthCookie(c *gin.Context) string {
+func GenerateStateOauthCookie(c *gin.Context, cfg config.Config) string {
 	var expiration = time.Now().Add(20 * time.Minute)
 	b := make([]byte, 16)
 	rand.Read(b)
 	state := base64.URLEncoding.EncodeToString(b)
-	c.SetCookie("oauthstate", state, int(expiration.Unix()), "/", "localhost", false, true)
+
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("oauthstate", state, int(expiration.Unix()), "/", "", true, true)
 	return state
 }
 
-func GoogleLoginHandler(c *gin.Context) {
-	state := GenerateStateOauthCookie(c)
-	url := oAuthConf.AuthCodeURL(state)
-	c.Redirect(http.StatusTemporaryRedirect, url)
+func GoogleLoginHandler(cfg config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		state := GenerateStateOauthCookie(c, cfg)
+		url := oAuthConf.AuthCodeURL(state)
+		c.Redirect(http.StatusTemporaryRedirect, url)
+	}
 }
 
 func AuthMiddleware(cfg config.Config) gin.HandlerFunc {
@@ -163,13 +167,13 @@ func GoogleCallbackHandler(db *gorm.DB, cfg config.Config) gin.HandlerFunc {
 }
 
 func GetOAuthConf() *oauth2.Config {
-    return oAuthConf
+	return oAuthConf
 }
 
 func GetOAuthGoogleUrlAPI() string {
-    return oAuthGoogleUrlAPI
+	return oAuthGoogleUrlAPI
 }
 
 func SetOAuthGoogleUrlAPI(url string) {
-    oAuthGoogleUrlAPI = url
+	oAuthGoogleUrlAPI = url
 }

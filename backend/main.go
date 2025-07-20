@@ -56,7 +56,7 @@ func main() {
 	// Define API routes
 	r.POST("/create-game", game.AuthMiddleware(cfg), game.CreateGameHandler(db))
 	r.POST("/join-game/:id", game.JoinGameHandler(db))
-	r.GET("/auth/google/login", game.GoogleLoginHandler)
+	r.GET("/auth/google/login", game.GoogleLoginHandler(cfg))
 	r.GET("/auth/google/callback", game.GoogleCallbackHandler(db, cfg))
 
 	// SSE endpoint
