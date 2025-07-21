@@ -49,7 +49,7 @@ func main() {
 	// Initialize SQLite database using GORM
 	db, err := gorm.Open(sqlite.Open("game.db"), &gorm.Config{})
 	if err != nil {
-		panic("failed to connect database")
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	// Perform initial database migration
