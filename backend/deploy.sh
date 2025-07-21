@@ -11,7 +11,7 @@ fi
 
 echo "Build successful. Starting the application..."
 LOG_FILE="deployment_$(date +%Y%m%d_%H%M%S).log"
-./async-multiplayer > "$LOG_FILE" 2>&1 &
+GIN_MODE=release ./async-multiplayer > "$LOG_FILE" 2>&1 &
 
 echo "Application started. Logs are being written to $LOG_FILE"
 
